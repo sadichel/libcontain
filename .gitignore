@@ -1,0 +1,7 @@
+.vscode/
+build/
+*.o
+*.exe
+*.out
+test_results.txt
+*.log

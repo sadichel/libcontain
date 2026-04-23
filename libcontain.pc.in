@@ -1,0 +1,11 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libcontain
+Description: Generic container library for C with iterators and pipelines
+Version: @VERSION@
+Libs: -L${libdir} -lcontain
+Libs.private: -lm
+Cflags: -I${includedir}
