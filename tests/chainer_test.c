@@ -13,8 +13,6 @@
 #include "assertion.h"
 #include "timer.h"
 
-#define VECTOR_IMPLEMENTATION
-#define HASHMAP_IMPLEMENTATION
 #include <contain/vector.h>
 #include <contain/hashmap.h>
 #include <contain/chainer.h>
@@ -46,12 +44,6 @@ static bool is_less_than_50(const Container *c, const void *e) {
 static void *double_int(const Container *c, const void *e, void *buf) {
     (void)c;
     *(int *)buf = *(const int *)e * 2;
-    return buf;
-}
-
-static void *add_ten(const Container *c, const void *e, void *buf) {
-    (void)c;
-    *(int *)buf = *(const int *)e + 10;
     return buf;
 }
 

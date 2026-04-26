@@ -8,7 +8,6 @@
 #include <string.h>
 #include <time.h>
 
-#define VECTOR_IMPLEMENTATION
 #include <contain/vector.h>
 
 /* Volatile sink to prevent optimization */

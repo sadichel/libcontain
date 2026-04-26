@@ -44,8 +44,8 @@ struct VectorImpl {
     uint16_t item_size;      /* 0 = string mode */
     uint16_t base_align;     /* alignment for first element */
     uint32_t stride;         /* = item_size (no padding) */
-    size_t cached_hash;
 };
+
 /* Layout calculation result */
 typedef struct {
     uint16_t base_align;
@@ -117,7 +117,6 @@ static void *vector_insert_slot(Vector *vec, size_t pos, size_t count) {
                 (old_len - pos) * stride);
     }
 
-    impl->cached_hash = 0;
     vec->container.len += count;
     return base + pos * stride;
 }
@@ -145,7 +144,6 @@ static int vector_free_slot(Vector *vec, size_t from, size_t to) {
         memmove(base + (from * stride), base + (to * stride), tail * stride);
     }
 
-    impl->cached_hash = 0;
     vec->container.len -= gap;
     return LC_OK;
 }
@@ -209,7 +207,6 @@ static Vector *vector_create_impl(VectorBuilder *cfg, VectorEntryLayout *layout)
     impl->item_size = (uint16_t)cfg->item_size;
     impl->base_align = (uint16_t)base_align;
     impl->stride = (uint32_t)stride;
-    impl->cached_hash = 0;
 
     /* Initialize container header */
     vec->container.items = buffer;
@@ -253,7 +250,6 @@ static Vector *vector_create_from_impl(const Vector *src, size_t capacity) {
     impl->item_size = item_size;
     impl->base_align = base_align;
     impl->stride = (uint32_t)stride;
-    impl->cached_hash = 0;
 
     vec->container.items = buffer;
     vec->container.len = 0;
@@ -502,7 +498,6 @@ int vector_push(Vector *vec, const void *item) {
     }
     
     vec->container.len = len + 1;
-    impl->cached_hash = 0;
     
     return LC_OK;
 }
@@ -533,8 +528,6 @@ int vector_set(Vector *vec, size_t pos, const void *item) {
 
     void *slot = vector_slot_at(vec, pos);
     int rc = lc_slot_set(slot, item, vec->impl->item_size);
-    if (rc == LC_OK)
-        ((VectorImpl *)vec->impl)->cached_hash = 0;
 
     return rc;
 }
@@ -669,7 +662,6 @@ int vector_clear(Vector *vec) {
         }
     }
 
-    ((VectorImpl *)vec->impl)->cached_hash = 0;
     vec->container.len = 0;
 
     return LC_OK;
@@ -844,7 +836,6 @@ int vector_unique(Vector *vec) {
         vec->container.len = write + 1;
     }
 
-    ((VectorImpl *)vec->impl)->cached_hash = 0;
     return LC_OK;
 }
 
@@ -856,7 +847,6 @@ int vector_sort(Vector *vec, lc_Comparator cmp) {
     if (!target_cmp) return LC_EINVAL;
 
     qsort(vec->container.items, vec->container.len, vec->impl->stride, target_cmp);
-    ((VectorImpl *)vec->impl)->cached_hash = 0;
 
     return LC_OK;
 }
@@ -984,8 +974,6 @@ size_t vector_capacity(const Vector *vec) {
 size_t vector_hash(const Vector *vec) {
     if (!vec || vec->container.len == 0) return 0;
 
-    if (vec->impl->cached_hash) return vec->impl->cached_hash;
-
     VectorImpl *impl = (VectorImpl *)vec->impl;
     const size_t len = vec->container.len;
     const size_t stride = impl->stride;
@@ -1001,8 +989,7 @@ size_t vector_hash(const Vector *vec) {
         h ^= item_hash + 0x9e3779b9 + (h << 6) + (h >> 2);
     }
 
-    impl->cached_hash = lc_hash_mix(h);
-    return impl->cached_hash;
+    return lc_hash_mix(h);
 }
 
 bool vector_equals(const Vector *A, const Vector *B) {
@@ -1015,12 +1002,6 @@ bool vector_equals(const Vector *A, const Vector *B) {
     /* Structural parity check */
     if (A->container.len != B->container.len ||
         impl_a->item_size != impl_b->item_size) {
-        return false;
-    }
-
-    /* Fast path: cached hash mismatch */
-    if (A->impl->cached_hash != 0 && B->impl->cached_hash != 0 &&
-        A->impl->cached_hash != B->impl->cached_hash) {
         return false;
     }
 

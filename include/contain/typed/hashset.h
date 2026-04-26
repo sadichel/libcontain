@@ -218,19 +218,34 @@
     /** @brief Insert an element into the hash set */ \
     static inline int name##_insert(name *n, T val) { \
         LC_SET_DEBUG_NULL(n, #name "_insert"); \
-        return hashset_insert((HashSet*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return hashset_insert((HashSet*)n, ptr); \
+        } \
+        return hashset_insert((HashSet*)n, &val); \
     } \
     \
     /** @brief Remove an element from the hash set */ \
     static inline int name##_remove(name *n, T val) { \
         LC_SET_DEBUG_NULL(n, #name "_remove"); \
-        return hashset_remove((HashSet*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return hashset_remove((HashSet*)n, ptr); \
+        } \
+        return hashset_remove((HashSet*)n, &val); \
     } \
     \
     /** @brief Check if an element exists in the hash set */ \
     static inline bool name##_contains(const name *n, T val) { \
         LC_SET_DEBUG_NULL(n, #name "_contains"); \
-        return hashset_contains((HashSet*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return hashset_contains((HashSet*)n, ptr); \
+        } \
+        return hashset_contains((HashSet*)n, &val); \
     } \
     \
     /** @brief Merge another hash set into this one (in-place union) */ \

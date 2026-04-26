@@ -11,12 +11,6 @@
 #include <string.h>
 #include <time.h>
 
-#define VECTOR_IMPLEMENTATION
-#define DEQUE_IMPLEMENTATION
-#define LINKEDLIST_IMPLEMENTATION
-#define HASHSET_IMPLEMENTATION
-#define HASHMAP_IMPLEMENTATION
-
 #include <contain/vector.h>
 #include <contain/deque.h>
 #include <contain/linkedlist.h>

@@ -8,8 +8,6 @@
 #include <string.h>
 #include <time.h>
 
-#define VECTOR_IMPLEMENTATION
-#define HASHMAP_IMPLEMENTATION
 #include <contain/vector.h>
 #include <contain/hashmap.h>
 #include <contain/iterator.h>

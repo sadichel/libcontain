@@ -616,6 +616,14 @@ size_t linkedlist_hash(const LinkedList *list);
 LinkedList *linkedlist_reverse(const LinkedList *list);
 
 /**
+ * @brief Get the allocator used by the list
+ *
+ * @param list Linked list to query
+ * @return Allocator used by the list, or NULL if list is NULL
+ */
+Allocator *linkedlist_allocator(const LinkedList *list);
+
+/**
  * @brief Create a new empty list of the same type
  *
  * @param list Source list (determines item size, alignment, comparator, allocator)
@@ -716,8 +724,6 @@ Iterator linkedlist_iter_reversed(const LinkedList *list);
  *   • Cached hash invalidated on any mutation
  * ============================================================================ */
 
-#include "linkedlist.h"
-
 /* -------------------------------------------------------------------------
  * Container vtable
  * ------------------------------------------------------------------------- */
@@ -748,7 +754,6 @@ struct LinkedListImpl {
     uint16_t item_offset;
     uint16_t item_size;
     uint32_t stride;
-    size_t cached_hash;
 };
 
 /* Node structure */
@@ -788,11 +793,7 @@ static LinkedListEntry *linkedlist_entry_create(LinkedList *list, const void *it
         return NULL;
     }
 
-    impl->cached_hash = 0;
     list->container.len++;
-
-    entry->next = NULL;
-    entry->prev = NULL;
 
     return entry;
 }
@@ -800,11 +801,11 @@ static LinkedListEntry *linkedlist_entry_create(LinkedList *list, const void *it
 /* Free node and its item */
 static void linkedlist_entry_free(LinkedList *list, LinkedListEntry *entry) {
     LinkedListImpl *impl = (LinkedListImpl *)list->impl;
-    
-    void *item_slot = lc_slot_at(entry->data, impl->item_offset);
-    lc_slot_free(item_slot, impl->item_size);
-
-    impl->cached_hash = 0;
+    if (impl->item_size == 0) {
+        void *item_slot = lc_slot_at(entry->data, impl->item_offset);
+        void *ptr = *(void **)item_slot;
+        if (ptr) free(ptr);
+    }
     allocator_free(list->alloc, entry);
     list->container.len--;
 }
@@ -886,7 +887,6 @@ static LinkedList *linkedlist_create_impl(const LinkedListBuilder *cfg, const Li
     impl->item_size = (uint16_t)cfg->item_size;
     impl->item_offset = layout->item_offset;
     impl->stride = layout->stride;
-    impl->cached_hash = 0;
 
     ctx.list->container.items = ctx.ends;
     ctx.list->container.len = 0;
@@ -932,7 +932,6 @@ static LinkedList *linkedlist_create_from_impl(const LinkedList *src, bool share
     impl->item_size = src_impl->item_size;
     impl->item_offset = src_impl->item_offset;
     impl->stride = src_impl->stride;
-    impl->cached_hash = 0;
 
     ctx.list->container.items = ctx.ends;
     ctx.list->container.len = 0;
@@ -1076,12 +1075,15 @@ static int linkedlist_insert_impl(LinkedList *list, size_t pos, const void *item
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
 
     if (old_len == 0) {
+        entry->next = NULL;
+        entry->prev = NULL;
         ends->head = entry;
         ends->tail = entry;
         return LC_OK;
     }
 
     if (pos == 0) {
+        entry->prev = NULL;
         entry->next = ends->head;
         ends->head->prev = entry;
         ends->head = entry;
@@ -1089,6 +1091,7 @@ static int linkedlist_insert_impl(LinkedList *list, size_t pos, const void *item
     }
 
     if (pos == old_len) {
+        entry->next = NULL;
         entry->prev = ends->tail;
         ends->tail->next = entry;
         ends->tail = entry;
@@ -1109,7 +1112,6 @@ static int linkedlist_insert_impl(LinkedList *list, size_t pos, const void *item
     entry->next = runner;
     runner->prev->next = entry;
     runner->prev = entry;
-
     return LC_OK;
 }
 
@@ -1226,9 +1228,6 @@ int linkedlist_set(LinkedList *list, size_t pos, const void *item) {
     void *item_slot = lc_slot_at(runner->data, list->impl->item_offset);
     int rc = lc_slot_set(item_slot, item, list->impl->item_size);
     
-    if (rc == LC_OK) {
-        ((LinkedListImpl *)list->impl)->cached_hash = 0;
-    }
     return rc;
 }
 
@@ -1321,7 +1320,6 @@ int linkedlist_reverse_inplace(LinkedList *list) {
     ends->head = ends->tail;
     ends->tail = tmp_head;
 
-    ((LinkedListImpl *)list->impl)->cached_hash = 0;
     return LC_OK;
 }
 
@@ -1349,7 +1347,6 @@ static void linkedlist_extract_chain(LinkedList *src, size_t from, size_t to,
     last->next = NULL;
 
     src->container.len -= (to - from);
-    ((LinkedListImpl *)src->impl)->cached_hash = 0;
 
     *out_first = first;
     *out_last = last;
@@ -1374,7 +1371,6 @@ static void linkedlist_splice_chain(LinkedList *dst, size_t pos,
     else ends->tail = last;
 
     dst->container.len += count;
-    ((LinkedListImpl *)dst->impl)->cached_hash = 0;
 }
 
 int linkedlist_splice(LinkedList *dst, size_t pos, LinkedList *src, size_t from, size_t to) {
@@ -1422,10 +1418,10 @@ int linkedlist_unique(LinkedList *list) {
         }
     }
 
-    impl->cached_hash = 0;
     return LC_OK;
 }
 
+/* Merge two sorted chains */
 static void linkedlist_merge_chains(LinkedListEntry *a, LinkedListEntry *b,
                                     size_t item_off, lc_Comparator cmp,
                                     LinkedListEntry **out_head, LinkedListEntry **out_tail) {
@@ -1516,7 +1512,6 @@ int linkedlist_sort(LinkedList *list, lc_Comparator cmp) {
 
     ends->head = head;
     ends->tail = tail_prev;
-    impl->cached_hash = 0;
     
     return LC_OK;
 }
@@ -1656,10 +1651,7 @@ size_t linkedlist_size(const LinkedList *list) {
 size_t linkedlist_hash(const LinkedList *list) {
     if (!list || list->container.len == 0) return 0;
 
-    if (list->impl->cached_hash) return list->impl->cached_hash;
-
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
-    LinkedListImpl *impl = (LinkedListImpl *)list->impl;
     const size_t item_off = list->impl->item_offset;
     const size_t item_sz = list->impl->item_size;
 
@@ -1670,8 +1662,7 @@ size_t linkedlist_hash(const LinkedList *list) {
         h ^= x + 0x9e3779b9 + (h << 6) + (h >> 2);
     }
     
-    impl->cached_hash = lc_hash_mix(h);
-    return impl->cached_hash;
+    return lc_hash_mix(h);
 }
 
 bool linkedlist_equals(const LinkedList *A, const LinkedList *B) {
@@ -1680,11 +1671,6 @@ bool linkedlist_equals(const LinkedList *A, const LinkedList *B) {
     if (A->container.len != B->container.len) return false;
 
     if (A->impl->item_size != B->impl->item_size) return false;
-    
-    if (A->impl->cached_hash != 0 && B->impl->cached_hash != 0 
-        && A->impl->cached_hash != B->impl->cached_hash) {
-        return false;
-    }
 
     const size_t item_off = A->impl->item_offset;
     const size_t item_sz = A->impl->item_size;
@@ -1702,6 +1688,10 @@ bool linkedlist_equals(const LinkedList *A, const LinkedList *B) {
     }
 
     return true;
+}
+
+Allocator *linkedlist_allocator(const LinkedList *list) {
+    return list ? list->alloc : NULL;
 }
 
 /* -------------------------------------------------------------------------

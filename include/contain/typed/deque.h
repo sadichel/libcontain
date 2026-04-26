@@ -159,6 +159,8 @@
  * @note Panics (abort) in debug mode when preconditions are violated.
  *       Define CONTAINER_DEBUG to enable runtime checks.
  */
+
+
 #define DECL_DEQUE_TYPE(T, size, name) \
     /* Compile-time size validation */ \
     LC_STATIC_ASSERT((size) == 0 || (size) == sizeof(T), \
@@ -239,13 +241,23 @@
     /** @brief Find the first occurrence of an element */ \
     static inline size_t name##_find(const name *n, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_find"); \
-        return deque_find((Deque*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return deque_find((Deque*)n, ptr); \
+        } \
+        return deque_find((Deque*)n, &val); \
     } \
     \
     /** @brief Find the last occurrence of an element */ \
     static inline size_t name##_rfind(const name *n, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_rfind"); \
-        return deque_rfind((Deque*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return deque_rfind((Deque*)n, ptr); \
+        } \
+        return deque_rfind((Deque*)n, &val); \
     } \
     \
     /** @brief Check if an element exists in the deque */ \
@@ -258,19 +270,52 @@
     /** @brief Append an element to the back of the deque */ \
     static inline int name##_push_back(name *n, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_push_back"); \
-        return deque_push_back((Deque*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        Deque *_d = (Deque*)n; \
+        size_t _len = _d->container.len; \
+        size_t _cap = _d->container.capacity; \
+        if (size != 0 && _len < _cap) { \
+            size_t _tail = (_d->head + _len) >= _cap ? (_d->head + _len) - _cap : (_d->head + _len); \
+            ((T*)_d->container.items)[_tail] = val; \
+            _d->container.len = _len + 1; \
+            return LC_OK; \
+        } \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return deque_push_back(_d, ptr); \
+        } \
+        return deque_push_back(_d, &val); \
     } \
-    \
     /** @brief Prepend an element to the front of the deque */ \
     static inline int name##_push_front(name *n, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_push_front"); \
-        return deque_push_front((Deque*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        Deque *_d = (Deque*)n; \
+        size_t _len = _d->container.len; \
+        size_t _cap = _d->container.capacity; \
+        if (size != 0 && _len < _cap) { \
+            size_t _new_head = (_d->head + _cap - 1) >= _cap ? (_d->head + _cap - 1) - _cap : (_d->head + _cap - 1); \
+            ((T*)_d->container.items)[_new_head] = val; \
+            _d->head = _new_head; \
+            _d->container.len = _len + 1; \
+            return LC_OK; \
+        } \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return deque_push_front(_d, ptr); \
+        } \
+        return deque_push_front(_d, &val); \
     } \
     \
     /** @brief Insert an element at the specified position */ \
     static inline int name##_insert(name *n, size_t pos, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_insert"); \
-        return deque_insert((Deque*)n, pos, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return deque_insert((Deque*)n, pos, ptr); \
+        } \
+        return deque_insert((Deque*)n, pos, &val); \
     } \
     \
     /** @brief Insert a range of elements from another deque */ \
@@ -307,15 +352,21 @@
     static inline int name##_set(name *n, size_t idx, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_set"); \
         LC_DEQ_DEBUG_BOUNDS(n, idx, #name "_set"); \
-        return deque_set((Deque*)n, idx, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return deque_set((Deque*)n, idx, ptr); \
+        } \
+        return deque_set((Deque*)n, idx, &val); \
     } \
     \
     /** @brief Get an element at the specified position (panics if out of bounds) */ \
     static inline T name##_at(const name *n, size_t idx) { \
         LC_DEQ_DEBUG_NULL(n, #name "_at"); \
         LC_DEQ_DEBUG_BOUNDS(n, idx, #name "_at"); \
-        void *slot = deque_at_mut((Deque*)n, idx); \
-        return *(T*)slot; \
+        Deque *_d = (Deque*)n; \
+        size_t _phys = (_d->head + idx) >= _d->container.capacity ? (_d->head + idx) - _d->container.capacity : (_d->head + idx); \
+        return ((T*)_d->container.items)[_phys]; \
     } \
     \
     /** @brief Get an element or return default if out of bounds */ \
@@ -330,18 +381,17 @@
     static inline T name##_front(const name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_front"); \
         LC_DEQ_DEBUG_EMPTY(n, #name "_front"); \
-        void *slot = deque_front_mut((Deque*)n); \
-        return *(T*)slot; \
+        return ((T*)((Deque*)n)->container.items)[((Deque*)n)->head]; \
     } \
     \
     /** @brief Get the last element (panics if empty) */ \
     static inline T name##_back(const name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_back"); \
         LC_DEQ_DEBUG_EMPTY(n, #name "_back"); \
-        void *slot = deque_back_mut((Deque*)n); \
-        return *(T*)slot; \
+        Deque *_d = (Deque*)n; \
+        size_t _tail = (_d->head + _d->container.len - 1) >= _d->container.capacity ? (_d->head + _d->container.len - 1) - _d->container.capacity : (_d->head + _d->container.len - 1); \
+        return ((T*)_d->container.items)[_tail]; \
     } \
-    \
     /** @brief Get pointer to element (NULL if out of bounds) */ \
     static inline T* name##_get_ptr(name *n, size_t idx) { \
         LC_DEQ_DEBUG_NULL(n, #name "_get_ptr"); \

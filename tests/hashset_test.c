@@ -22,41 +22,11 @@
 #include "assertion.h"
 #include "timer.h"
 
-#define HASHSET_IMPLEMENTATION
 #include <contain/hashset.h>
 
 /* ============================================================================
  * Test Helpers
  * ============================================================================ */
-
-typedef struct {
-    int   id;
-    float score;
-} Entry;
-
-static int cmp_entry(const void *a, const void *b) {
-    return ((const Entry *)a)->id - ((const Entry *)b)->id;
-}
-
-static int cmp_int(const void *a, const void *b) {
-    return *(const int *)a - *(const int *)b;
-}
-
-static int cmp_str_ptr(const void *a, const void *b) {
-    return strcmp(*(const char **)a, *(const char **)b);
-}
-
-static size_t hash_int(const void *item, size_t size) {
-    (void)size;
-    uint32_t x = (uint32_t)*(const int *)item;
-    x ^= x >> 16; x *= 0x45d9f3b; x ^= x >> 16;
-    return (size_t)x;
-}
-
-static size_t hash_entry(const void *item, size_t size) {
-    (void)size;
-    return (size_t)((const Entry *)item)->id * 2654435761ULL;
-}
 
 /* Alignment test types */
 typedef struct {
@@ -66,14 +36,6 @@ typedef struct {
 typedef struct {
     alignas(64) uint8_t data[64];
 } Aligned64;
-
-static int cmp_aligned32(const void *a, const void *b) {
-    return memcmp(((const Aligned32 *)a)->data, ((const Aligned32 *)b)->data, 32);
-}
-
-static int cmp_aligned64(const void *a, const void *b) {
-    return memcmp(((const Aligned64 *)a)->data, ((const Aligned64 *)b)->data, 64);
-}
 
 /* Fill set with ints [0, n) */
 static void hashset_fill(HashSet *set, int n) {

@@ -8,7 +8,6 @@
 #include <string.h>
 #include <time.h>
 
-#define VECTOR_IMPLEMENTATION
 #include <contain/vector.h>
 #include <contain/iterator.h>
 #include <contain/chainer2.h>

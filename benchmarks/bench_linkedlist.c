@@ -8,7 +8,6 @@
 #include <string.h>
 #include <time.h>
 
-#define LINKEDLIST_IMPLEMENTATION
 #include <contain/linkedlist.h>
 
 /* Volatile sink to prevent optimization */

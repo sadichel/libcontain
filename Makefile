@@ -4,25 +4,30 @@
 # ============================================================================
 
 CC = gcc
+CXX = g++
 AR = ar
 ARFLAGS = rcs
 VERSION = 1.0.0
-
-# POSIX feature test macro for strdup() and other extensions
-POSIX_FLAGS = -D_POSIX_C_SOURCE=200809L
 
 # Build directory
 BUILD_DIR = build
 
 # Compiler flags - base flags without include path or POSIX flags
-BASE_CFLAGS = -std=c99 -Wall -Wextra -Wpedantic -fPIC
+BASE_CFLAGS = -std=gnu99 -Wall -Wextra -Wpedantic -fPIC
+BASE_CXXFLAGS = -std=gnu++11 -Wall -O2 -fPIC
 
 # Build variants
 RELEASE_CFLAGS = $(BASE_CFLAGS) -O2 -Iinclude $(POSIX_FLAGS)
+RELEASE_CXXFLAGS = $(BASE_CXXFLAGS) -O2 -Iinclude $(POSIX_FLAGS)
+
 DEBUG_CFLAGS = $(BASE_CFLAGS) -O0 -g -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
+DEBUG_CXXFLAGS = $(BASE_CXXFLAGS) -O0 -g -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
+
 SANITIZE_CFLAGS = $(BASE_CFLAGS) -O0 -g -fsanitize=address,undefined -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
+SANITIZE_CXXFLAGS = $(BASE_CXXFLAGS) -O0 -g -fsanitize=address,undefined -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
 
 CFLAGS = $(RELEASE_CFLAGS)
+CXXFLAGS = $(RELEASE_CXXFLAGS)
 LDFLAGS = -lm
 
 # Parallel builds
@@ -64,7 +69,7 @@ TEST_TARGETS = $(addprefix test-, $(TEST_NAMES))
 
 BENCH_DIR = benchmarks
 BENCH_NAMES = vector deque linkedlist hashset hashmap pipeline pipeline2 typed_vs_generic \
-              vs_uthash vs_klib vs_stb_ds
+              vs_uthash vs_klib vs_stb_ds vs_cpp
 BENCH_BINS = $(addprefix $(BUILD_DIR)/$(BENCH_DIR)/, $(addsuffix , $(BENCH_NAMES)))
 BENCH_TARGETS = $(addprefix bench-, $(BENCH_NAMES))
 
@@ -81,6 +86,7 @@ TOUR_SRC = tests/tour.c
 
 DEPFLAGS = -MMD -MP
 CFLAGS += $(DEPFLAGS)
+CXXFLAGS += $(DEPFLAGS)
 
 # ============================================================================
 # Phony Targets
@@ -121,12 +127,15 @@ $(BUILD_DIR)/src:
 # ============================================================================
 
 release: CFLAGS = $(RELEASE_CFLAGS)
+release: CXXFLAGS = $(RELEASE_CXXFLAGS)
 release: clean all
 
 debug: CFLAGS = $(DEBUG_CFLAGS)
+debug: CXXFLAGS = $(DEBUG_CXXFLAGS)
 debug: clean all
 
 sanitize: CFLAGS = $(SANITIZE_CFLAGS)
+sanitize: CXXFLAGS = $(SANITIZE_CXXFLAGS)
 sanitize: clean all
 
 # ============================================================================
@@ -196,10 +205,15 @@ bench: $(BENCH_TARGETS)
 	@echo "  All Benchmarks Completed"
 	@echo "========================================="
 
-# Pattern rule for benchmark binaries
+# Pattern rule for C benchmark binaries
 $(BUILD_DIR)/$(BENCH_DIR)/%: $(BENCH_DIR)/%.c $(LIBRARY) | $(BUILD_DIR)/$(BENCH_DIR)
 	@echo "  CC       $@"
 	$(CC) $(CFLAGS) $< -o $@ $(LIBRARY) $(LDFLAGS)
+
+# Pattern rule for C++ benchmark binaries
+$(BUILD_DIR)/$(BENCH_DIR)/%: $(BENCH_DIR)/%.cpp $(LIBRARY) | $(BUILD_DIR)/$(BENCH_DIR)
+	@echo "  CXX      $@"
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LIBRARY) $(LDFLAGS)
 
 $(BUILD_DIR)/$(BENCH_DIR):
 	mkdir -p $@
@@ -344,3 +358,4 @@ help:
 	@echo "Code Quality:"
 	@echo "  make format       - Format code with clang-format"
 	@echo "  make check        - Run static analysis with clang-tidy"
+	@echo ""

@@ -8,7 +8,6 @@
 #include <string.h>
 #include <time.h>
 
-#define DEQUE_IMPLEMENTATION
 #include <contain/deque.h>
 
 /* Volatile sink to prevent optimization */

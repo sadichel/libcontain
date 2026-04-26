@@ -231,13 +231,23 @@
     /** @brief Find the first occurrence of an element (O(n)) */ \
     static inline size_t name##_find(const name *n, T val) { \
         LC_LIST_DEBUG_NULL(n, #name "_find"); \
-        return linkedlist_find((LinkedList*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return linkedlist_find((LinkedList*)n, ptr); \
+        } \
+        return linkedlist_find((LinkedList*)n, &val); \
     } \
     \
     /** @brief Find the last occurrence of an element (O(n)) */ \
     static inline size_t name##_rfind(const name *n, T val) { \
         LC_LIST_DEBUG_NULL(n, #name "_rfind"); \
-        return linkedlist_rfind((LinkedList*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return linkedlist_rfind((LinkedList*)n, ptr); \
+        } \
+        return linkedlist_rfind((LinkedList*)n, &val); \
     } \
     \
     /** @brief Check if an element exists in the list (O(n)) */ \
@@ -250,19 +260,34 @@
     /** @brief Prepend an element to the front of the list (O(1)) */ \
     static inline int name##_push_front(name *n, T val) { \
         LC_LIST_DEBUG_NULL(n, #name "_push_front"); \
-        return linkedlist_push_front((LinkedList*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return linkedlist_push_front((LinkedList*)n, ptr); \
+        } \
+        return linkedlist_push_front((LinkedList*)n, &val); \
     } \
     \
     /** @brief Append an element to the back of the list (O(1)) */ \
     static inline int name##_push_back(name *n, T val) { \
         LC_LIST_DEBUG_NULL(n, #name "_push_back"); \
-        return linkedlist_push_back((LinkedList*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return linkedlist_push_back((LinkedList*)n, ptr); \
+        } \
+        return linkedlist_push_back((LinkedList*)n, &val); \
     } \
     \
     /** @brief Insert an element at the specified position (O(n)) */ \
     static inline int name##_insert(name *n, size_t pos, T val) { \
         LC_LIST_DEBUG_NULL(n, #name "_insert"); \
-        return linkedlist_insert((LinkedList*)n, pos, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return linkedlist_insert((LinkedList*)n, pos, ptr); \
+        } \
+        return linkedlist_insert((LinkedList*)n, pos, &val); \
     } \
     \
     /** @brief Insert a range of elements from another linked list */ \
@@ -285,7 +310,12 @@
     static inline int name##_set(name *n, size_t pos, T val) { \
         LC_LIST_DEBUG_NULL(n, #name "_set"); \
         LC_LIST_DEBUG_BOUNDS(n, pos, #name "_set"); \
-        return linkedlist_set((LinkedList*)n, pos, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return linkedlist_set((LinkedList*)n, pos, ptr); \
+        } \
+        return linkedlist_set((LinkedList*)n, pos, &val); \
     } \
     \
     /** @brief Get an element at the specified position (O(n), panics if out of bounds) */ \

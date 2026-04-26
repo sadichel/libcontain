@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
-project(libcontain VERSION 1.0.0 LANGUAGES C)
+project(libcontain VERSION 1.0.0 LANGUAGES C CXX)
 
 # C99 standard
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)
 
-# POSIX extensions for strdup() and other functions
-add_compile_definitions(_POSIX_C_SOURCE=200809L)
+# C++11 for benchmarks
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ============================================================================
 # Build Options
@@ -25,6 +27,12 @@ option(BUILD_BENCHMARKS "Build benchmarks" ON)
 set(BASE_C_FLAGS "-Wall -Wextra -Wpedantic -fPIC")
 
 # Build type flags
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(CONTAINER_DEBUG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
@@ -105,9 +113,13 @@ if(BUILD_TESTS)
         set_target_properties(${NAME}_test PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests
         )
+        
+        # Suppress array-bounds for tests only — iter_peek non-peekable test
+        # does an intentional out-of-type cast that the guard catches at runtime
+        target_compile_options(${NAME}_test PRIVATE -Wno-array-bounds)
+        
         add_test(NAME ${NAME} COMMAND ${CMAKE_BINARY_DIR}/tests/${NAME}_test)
         
-        # Add individual test target
         add_custom_target(test-${NAME}
             COMMAND ${CMAKE_BINARY_DIR}/tests/${NAME}_test
             DEPENDS ${NAME}_test
@@ -137,24 +149,29 @@ endif()
 # ============================================================================
 
 if(BUILD_BENCHMARKS)
-    # Benchmark names list
     set(BENCH_NAMES 
-        vector deque linkedlist hashset hashmap pipeline pipeline2 typed-vs-generic
-        vs-uthash vs-klib vs-stb-ds vs-cpp
+        vector deque linkedlist hashset hashmap pipeline pipeline2 typed_vs_generic
+        vs_uthash vs_klib vs_stb_ds vs_cpp
     )
     
-    # Create benchmark executables using a function
     function(add_libcontain_benchmark NAME)
-        # Convert hyphens to underscores for target name
         string(REPLACE "-" "_" SAFE_NAME ${NAME})
         
-        add_executable(bench_${SAFE_NAME} benchmarks/bench_${NAME}.c)
+        set(SOURCE_FILE benchmarks/bench_${NAME}.c)
+        if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_FILE})
+            set(SOURCE_FILE benchmarks/bench_${NAME}.cpp)
+        endif()
+        
+        add_executable(bench_${SAFE_NAME} ${SOURCE_FILE})
         target_link_libraries(bench_${SAFE_NAME} libcontain)
         set_target_properties(bench_${SAFE_NAME} PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks
         )
         
-        # Add individual benchmark target
+        if(SOURCE_FILE MATCHES "\\.cpp$")
+            target_compile_features(bench_${SAFE_NAME} PRIVATE cxx_std_11)
+        endif()
+        
         add_custom_target(bench-${NAME}
             COMMAND ${CMAKE_BINARY_DIR}/benchmarks/bench_${SAFE_NAME}
             DEPENDS bench_${SAFE_NAME}
@@ -162,15 +179,17 @@ if(BUILD_BENCHMARKS)
         )
     endfunction()
     
-    # Create all benchmarks
+    # Create all benchmarks - check for BOTH .c and .cpp
     foreach(BENCH_NAME ${BENCH_NAMES})
-        # Check if benchmark source exists
-        if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/bench_${BENCH_NAME}.c)
+        set(C_FILE benchmarks/bench_${BENCH_NAME}.c)
+        set(CPP_FILE benchmarks/bench_${BENCH_NAME}.cpp)
+        
+        if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${C_FILE} OR 
+           EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${CPP_FILE})
             add_libcontain_benchmark(${BENCH_NAME})
         endif()
     endforeach()
     
-    # Custom target to run all benchmarks
     add_custom_target(bench
         COMMENT "All benchmarks completed"
     )

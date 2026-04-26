@@ -25,21 +25,11 @@
 #include "assertion.h"
 #include "timer.h"
 
-#define DEQUE_IMPLEMENTATION
 #include <contain/deque.h>
 
 /* ============================================================================
  * Test Helpers
  * ============================================================================ */
-
-typedef struct {
-    int   id;
-    char *name;
-} Person;
-
-static int cmp_person(const void *a, const void *b) {
-    return ((const Person *)a)->id - ((const Person *)b)->id;
-}
 
 static int cmp_int(const void *a, const void *b) {
     return *(const int *)a - *(const int *)b;
@@ -57,14 +47,6 @@ typedef struct {
 typedef struct {
     alignas(64) uint8_t data[64];
 } Aligned64;
-
-static bool aligned32_eq(const Aligned32 *a, const Aligned32 *b) {
-    return memcmp(a->data, b->data, 32) == 0;
-}
-
-static bool aligned64_eq(const Aligned64 *a, const Aligned64 *b) {
-    return memcmp(a->data, b->data, 64) == 0;
-}
 
 /* Force circular buffer wrap */
 static void deque_force_wrap(Deque *deq, int n) {

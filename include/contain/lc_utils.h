@@ -38,7 +38,7 @@ typedef union {
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #define LC_STATIC_ASSERT(expr, msg) _Static_assert(expr, msg)
 #else
-#define LC_STATIC_ASSERT(expr, msg) /* no static assert */
+#define LC_STATIC_ASSERT(expr, msg)  extern int lc_static_assert_dummy /* no static assert */
 #endif
 
 /* Enable debug output by defining CONTAINER_DEBUG before including this header */
@@ -417,8 +417,6 @@ static inline void *lc_slot_get(void *slot, size_t size) {
  * @return LC_OK on success, error code on failure
  */
 static inline lc_Error lc_slot_set(void *slot, const void *val, size_t size) {
-    if (!slot || !val) return LC_EINVAL;
-
     if (size == 0) {
         char *dup = strdup((const char *)val);
         if (!dup) return LC_ENOMEM;
@@ -438,8 +436,6 @@ static inline lc_Error lc_slot_set(void *slot, const void *val, size_t size) {
  * @return LC_OK on success, error code on failure
  */
 static inline lc_Error lc_slot_init(void *slot, const void *val, size_t size) {
-    if (!slot || !val) return LC_EINVAL;
-
     if (size == 0) {
         char *dup = strdup((const char *)val);
         if (!dup) return LC_ENOMEM;
@@ -458,8 +454,6 @@ static inline lc_Error lc_slot_init(void *slot, const void *val, size_t size) {
  * @return LC_OK on success, error code on failure
  */
 static inline lc_Error lc_slot_copy(void *dst, const void *src, size_t size) {
-    if (!dst || !src) return LC_EINVAL;
-
     if (size == 0) {
         const char *src_str = *(const char **)src;
         if (!src_str) {

@@ -8,7 +8,6 @@
 #include <string.h>
 #include <time.h>
 
-#define HASHSET_IMPLEMENTATION
 #include <contain/hashset.h>
 
 /* Volatile sink to prevent optimization */

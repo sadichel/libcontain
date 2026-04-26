@@ -774,7 +774,7 @@ static const IteratorVTable ITER_PEEK_OPS = {
  * @param it The iterator to peek into
  * @return Pointer to the next element, or NULL if not peekable or empty.
  */
-static const void *iter_peek(Iterator *it) {
+static inline const void *iter_peek(Iterator *it) {
     if (!it || it->ops != &ITER_PEEK_OPS) {
         return NULL;
     }
@@ -795,7 +795,7 @@ static const void *iter_peek(Iterator *it) {
  * @param inner Source iterator (ownership taken)
  * @return A new decorator supporting peeking, or NULL.
  */
-static inline Iterator *peek_iter(Iterator *inner) {
+static inline Iterator *iter_peekable(Iterator *inner) {
     if (!inner) return NULL;
     
     PeekIter *p = (PeekIter *)malloc(sizeof(PeekIter));
@@ -1017,7 +1017,7 @@ static inline void iter_for_each(Iterator *it, void (*f)(const Container *, cons
  *   int *first = (int *)iter_find(HeapIter(vec), NULL);
  * @endcode
  */
-static const void *iter_find(Iterator *it, bool (*pred)(const Container *, const void *)) {
+static inline const void *iter_find(Iterator *it, bool (*pred)(const Container *, const void *)) {
     if (!it) return NULL;
     
     const void *e;

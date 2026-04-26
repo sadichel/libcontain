@@ -14,11 +14,6 @@
 #include "assertion.h"
 #include "timer.h"
 
-#define VECTOR_IMPLEMENTATION
-#define DEQUE_IMPLEMENTATION
-#define LINKEDLIST_IMPLEMENTATION
-#define HASHSET_IMPLEMENTATION
-#define HASHMAP_IMPLEMENTATION
 #include <contain/typed.h>
 
 /* Define all typed containers before including typed.h */

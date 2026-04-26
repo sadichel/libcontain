@@ -8,25 +8,10 @@
 #include <stdlib.h>
 #include "assertion.h"
 
-#define LINKEDLIST_IMPLEMENTATION
-#define HASHSET_IMPLEMENTATION
-#define HASHMAP_IMPLEMENTATION
-
 #include <contain/linkedlist.h>
 #include <contain/hashset.h>
 #include <contain/hashmap.h>
 #include <contain/allocator.h>
-
-/* ============================================================================
- * Helper: Print allocator stats
- * ============================================================================ */
-
-static void print_stats(Allocator *a, const char *name) {
-    AllocatorStats stats;
-    allocator_stats(a, &stats);
-    printf("  %s: capacity=%zu, used=%zu, freelist=%zu, segments=%zu\n",
-           name, stats.capacity, stats.used, stats.freelist, stats.segments);
-}
 
 /* ============================================================================
  * Test: Verify allocator usage via stats

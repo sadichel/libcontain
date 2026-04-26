@@ -46,7 +46,6 @@ struct HashMapImpl {
     uint16_t key_size;
     uint16_t val_size;
     uint32_t stride;
-    size_t cached_hash;
 };
 
 /* Hash entry stored in buckets */
@@ -87,7 +86,6 @@ static HashMapEntry *hashmap_entry_create(HashMap *map, const void *key, const v
     }
 
     entry->next = NULL;
-    impl->cached_hash = 0;
     map->container.len++;
 
     return entry;
@@ -103,7 +101,6 @@ static void hashmap_entry_free(HashMap *map, HashMapEntry *entry) {
     lc_slot_free(key_slot, impl->key_size);
     lc_slot_free(val_slot, impl->val_size);
 
-    impl->cached_hash = 0;
     allocator_free(map->alloc, entry);
     map->container.len--;
 }
@@ -260,7 +257,6 @@ static HashMap *hashmap_create_impl(const HashMapBuilder *cfg, const HashMapEntr
     impl->key_size = (uint16_t)cfg->key_size;
     impl->val_size = (uint16_t)cfg->val_size;
     impl->stride = layout->stride;
-    impl->cached_hash = 0;
 
     ctx.map->container.items = ctx.buckets;
     ctx.map->container.len = 0;
@@ -313,7 +309,6 @@ static HashMap *hashmap_create_from_impl(const HashMap *src, size_t capacity, bo
     impl->key_size = src_impl->key_size;
     impl->val_size = src_impl->val_size;
     impl->stride = src_impl->stride;
-    impl->cached_hash = 0;
 
     ctx.map->container.items = ctx.buckets;
     ctx.map->container.len = 0;
@@ -624,7 +619,7 @@ static int hashmap_insert_impl(HashMap *map, const void *key, const void *val, s
 
             int rc = lc_slot_set(val_slot, val, val_sz);
             if (rc == LC_OK) 
-                impl->cached_hash = 0;
+        
             return rc;
         }
     }
@@ -795,8 +790,6 @@ static int hashmap_merge_impl(HashMap *dst, const HashMap *src) {
     dst->container.capacity = tmp_cap;
     dst->container.len = tmp_len;
 
-    ((HashMapImpl *)dst->impl)->cached_hash = 0;
-
     hashmap_destroy(tmp);
     return LC_OK;
 }
@@ -866,8 +859,6 @@ bool hashmap_is_empty(const HashMap *map) { return !map || map->container.len ==
 
 size_t hashmap_hash(const HashMap *map) {
     if (!map || map->container.len == 0) return 0;
-
-    if (map->impl->cached_hash) return map->impl->cached_hash;
     
     HashMapImpl *impl = (HashMapImpl *)map->impl;
     const size_t cap = map->container.capacity;
@@ -889,8 +880,7 @@ size_t hashmap_hash(const HashMap *map) {
         }
     }
 
-    impl->cached_hash = lc_hash_mix(h ^ map->container.len);
-    return impl->cached_hash;
+    return lc_hash_mix(h ^ map->container.len);
 }
 
 static bool hashmap_submap(const HashMap *A, const HashMap *B) {
@@ -932,11 +922,6 @@ bool hashmap_equals(const HashMap *A, const HashMap *B) {
 
     if (ai->key_size != bi->key_size || ai->val_size != bi->val_size) {
         return false;
-    }
-
-    if (A->impl->cached_hash != 0 && B->impl->cached_hash != 0 
-        && A->impl->cached_hash == B->impl->cached_hash) {
-        return true;
     }
 
     return hashmap_submap(A, B);

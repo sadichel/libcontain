@@ -8,7 +8,6 @@
 #include <string.h>
 #include <time.h>
 
-#define HASHMAP_IMPLEMENTATION
 #include <contain/hashmap.h>
 #include <contain/typed.h>
 
@@ -97,7 +96,6 @@ static void run_libcontain_int_insert(int n) {
 
 static void run_uthash_str_insert(int n) {
     UthashStrEntry *map = NULL;
-    char key[64];
     for (int i = 0; i < n; i++) {
         UthashStrEntry *e = malloc(sizeof(UthashStrEntry));
         snprintf(e->key, sizeof(e->key), "key_%d", i);

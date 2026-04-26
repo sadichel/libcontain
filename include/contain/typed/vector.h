@@ -241,13 +241,23 @@
     /** @brief Find the first occurrence of an element */ \
     static inline size_t name##_find(const name *n, T val) { \
         LC_VEC_DEBUG_NULL(n, #name "_find"); \
-        return vector_find((Vector*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return vector_find((Vector*)n, ptr); \
+        } \
+        return vector_find((Vector*)n, &val);\
     } \
     \
     /** @brief Find the last occurrence of an element */ \
     static inline size_t name##_rfind(const name *n, T val) { \
         LC_VEC_DEBUG_NULL(n, #name "_rfind"); \
-        return vector_rfind((Vector*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return vector_rfind((Vector*)n, ptr); \
+        } \
+        return vector_rfind((Vector*)n, &val); \
     } \
     \
     /** @brief Check if an element exists in the vector */ \
@@ -260,14 +270,31 @@
     /** @brief Append an element to the end of the vector */ \
     static inline int name##_push(name *n, T val) { \
         LC_VEC_DEBUG_NULL(n, #name "_push"); \
-        return vector_push((Vector*)n, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) { \
+            void *ptr; \
+            memcpy(&ptr, &val, sizeof(void*)); \
+            return vector_push((Vector*)n, ptr); \
+        } \
+        Vector *_v = (Vector*)n; \
+        size_t _len = _v->container.len; \
+        if (_len < _v->container.capacity) { \
+            ((T*)_v->container.items)[_len] = val; \
+            _v->container.len = _len + 1; \
+            return LC_OK; \
+        } \
+        return vector_push(_v, &val); \
     } \
     \
     \
     /** @brief Insert an element at the specified position */ \
     static inline int name##_insert(name *n, size_t pos, T val) { \
         LC_VEC_DEBUG_NULL(n, #name "_insert"); \
-        return vector_insert((Vector*)n, pos, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) {                                                  \
+            void *ptr;                                                    \
+            memcpy(&ptr, &val, sizeof(void*));                            \
+            return vector_insert((Vector*)n, pos, ptr);                    \
+        }                                                                 \
+        return vector_insert((Vector*)n, pos, &val);                       \
     } \
     \
     /** @brief Insert a range of elements from another vector */ \
@@ -297,15 +324,19 @@
     static inline int name##_set(name *n, size_t idx, T val) { \
         LC_VEC_DEBUG_NULL(n, #name "_set"); \
         LC_VEC_DEBUG_BOUNDS(n, idx, #name "_set"); \
-        return vector_set((Vector*)n, idx, (size == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (size == 0) {                                                  \
+            void *ptr;                                                    \
+            memcpy(&ptr, &val, sizeof(void*));                            \
+            return vector_set((Vector*)n, idx, ptr);                       \
+        }                                                                 \
+        return vector_set((Vector*)n, idx, &val);                          \
     } \
     \
     /** @brief Get an element at the specified position (panics if out of bounds) */ \
     static inline T name##_at(const name *n, size_t idx) { \
         LC_VEC_DEBUG_NULL(n, #name "_at"); \
         LC_VEC_DEBUG_BOUNDS(n, idx, #name "_at"); \
-        void *slot = vector_at_mut((Vector*)n, idx); \
-        return *(T*)slot; \
+        return ((T*)((Vector*)n)->container.items)[idx]; \
     } \
     \
     /** @brief Get an element or return default if out of bounds */ \
@@ -320,16 +351,14 @@
     static inline T name##_front(const name *n) { \
         LC_VEC_DEBUG_NULL(n, #name "_front"); \
         LC_VEC_DEBUG_EMPTY(n, #name "_front"); \
-        void *slot = vector_front_mut((Vector*)n); \
-        return *(T*)slot; \
+        return ((T*)((Vector*)n)->container.items)[0]; \
     } \
     \
     /** @brief Get the last element (panics if empty) */ \
     static inline T name##_back(const name *n) { \
         LC_VEC_DEBUG_NULL(n, #name "_back"); \
         LC_VEC_DEBUG_EMPTY(n, #name "_back"); \
-        void *slot = vector_back_mut((Vector*)n); \
-        return *(T*)slot; \
+        return ((T*)((Vector*)n)->container.items)[((Vector*)n)->container.len - 1]; \
     } \
     \
     /** @brief Get pointer to element (NULL if out of bounds) */ \

@@ -8,8 +8,6 @@
 #include <string.h>
 #include <time.h>
 
-#define VECTOR_IMPLEMENTATION
-#define HASHMAP_IMPLEMENTATION
 #include <contain/vector.h>
 #include <contain/hashmap.h>
 #include <contain/typed.h>
@@ -130,7 +128,7 @@ static void run_stb_ds_vector_push_string(int n) {
         snprintf(buf, sizeof(buf), "str_%d", i);
         arrput(arr, strdup(buf));
     }
-    for (size_t i = 0; i < arrlen(arr); i++) {
+    for (size_t i = 0; i < (size_t)arrlen(arr); i++) {
         free(arr[i]);
     }
     arrfree(arr);

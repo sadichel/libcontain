@@ -21,27 +21,11 @@
 #include "assertion.h"
 #include "timer.h"
 
-#define HASHMAP_IMPLEMENTATION
 #include <contain/hashmap.h>
 
 /* ============================================================================
  * Test Helpers
  * ============================================================================ */
-
-static int cmp_int(const void *a, const void *b) {
-    return *(const int *)a - *(const int *)b;
-}
-
-static int cmp_str_ptr(const void *a, const void *b) {
-    return strcmp(*(const char **)a, *(const char **)b);
-}
-
-static size_t hash_int(const void *item, size_t size) {
-    (void)size;
-    uint32_t x = (uint32_t)*(const int *)item;
-    x ^= x >> 16; x *= 0x45d9f3b; x ^= x >> 16;
-    return (size_t)x;
-}
 
 /* Alignment test types */
 typedef struct {

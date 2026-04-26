@@ -139,8 +139,8 @@ typedef enum {
  * The union holds type-specific data:
  *   - FILTER: pred function pointer
  *   - MAP: map function pointer and output buffer
- *   - TAKE: init_count and curr_count
- *   - SKIP: init_count and curr_count (same layout as TAKE)
+ *   - TAKE: count.init and count.curr
+ *   - SKIP: count.init and count.curr (same layout as TAKE)
  */
 typedef struct {
     ChainKind kind;                     /**< Type of this chain */
@@ -150,8 +150,8 @@ typedef struct {
         /** Map function for map chains */
         void *(*map)(const Container *, const void *, void *);
         /** Count state for skip/take chains */
-        struct { uint32_t init_count; uint32_t curr_count; };
-    };
+        struct { uint32_t init; uint32_t curr; } count;
+    } as;
     void *buffer;                       /**< Output buffer for map chains only */
 } ChainType;
 
@@ -199,7 +199,7 @@ static inline void _chain_reset(Chainer *c) {
     for (size_t i = 0; i < c->len; i++) {
         ChainType *ch = &c->chains[i];
         if (ch->kind == CHAIN_SKIP || ch->kind == CHAIN_TAKE) {
-            ch->curr_count = ch->init_count;
+            ch->as.count.curr = ch->as.count.init;
         }
     }
 }
@@ -253,7 +253,7 @@ static inline const void *_chain_fused_next(Iterator *it, const Chainer *c) {
 
             switch (ch->kind) {
                 case CHAIN_FILTER:
-                    if (!ch->pred(c->base, curr)) { 
+                    if (!ch->as.pred(c->base, curr)) { 
                         curr = NULL; 
                         dropped = true;
                     }
@@ -261,24 +261,25 @@ static inline const void *_chain_fused_next(Iterator *it, const Chainer *c) {
 
                 case CHAIN_MAP:
                     if (curr) {
-                        curr = ch->map(c->base, curr, ch->buffer);
+                        curr = ch->as.map(c->base, curr, ch->buffer);
                         if (!curr) dropped = true;
                     } else {
                         dropped = true;
                     }
                     break;
 
+
                 case CHAIN_SKIP:
-                    if (ch->curr_count) {
-                        ch->curr_count--;
+                    if (ch->as.count.curr) {
+                        ch->as.count.curr--;
                         curr = NULL;
                         dropped = true;
                     }
                     break;
 
                 case CHAIN_TAKE:
-                    if (!ch->curr_count) return NULL;
-                    ch->curr_count--;
+                    if (!ch->as.count.curr) return NULL;
+                    ch->as.count.curr--;
                     break;
             }
             if (dropped) break;
@@ -409,7 +410,7 @@ static inline Chainer *chain_filter(Chainer *c, bool (*pred)(const Container *, 
     if (_chain_grow(c)) {
         ChainType *ch = &c->chains[c->len++];
         ch->kind = CHAIN_FILTER;
-        ch->pred = pred;
+        ch->as.pred = pred;
         ch->buffer = NULL;
     }
     return c;
@@ -471,7 +472,7 @@ static inline Chainer *chain_map(Chainer *c, void *(*map)(const Container *, con
         if (buf) {
             ChainType *ch = &c->chains[c->len++];
             ch->kind = CHAIN_MAP;
-            ch->map = map;
+            ch->as.map = map;
             ch->buffer = buf;
         }
     }
@@ -499,8 +500,8 @@ static inline Chainer *chain_skip(Chainer *c, uint32_t n) {
     if (_chain_grow(c)) {
         ChainType *ch = &c->chains[c->len++];
         ch->kind = CHAIN_SKIP;
-        ch->init_count = n;
-        ch->curr_count = n;
+        ch->as.count.init = n;
+        ch->as.count.curr = n;
         ch->buffer = NULL;
     }
     return c;
@@ -526,8 +527,8 @@ static inline Chainer *chain_take(Chainer *c, uint32_t n) {
     if (_chain_grow(c)) {
         ChainType *ch = &c->chains[c->len++];
         ch->kind = CHAIN_TAKE;
-        ch->init_count = n;
-        ch->curr_count = n;
+        ch->as.count.init = n;
+        ch->as.count.curr = n;
         ch->buffer = NULL;
     }
     return c;

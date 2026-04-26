@@ -4,13 +4,6 @@
  * 
  */
 
-/* Enable all implementations */
-#define VECTOR_IMPLEMENTATION
-#define DEQUE_IMPLEMENTATION
-#define LINKEDLIST_IMPLEMENTATION
-#define HASHSET_IMPLEMENTATION
-#define HASHMAP_IMPLEMENTATION
-
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -53,20 +46,6 @@ DECL_LINKEDLIST_TYPE(double, sizeof(double), DoubleList)
 /* ============================================================================
  * Generic factory functions (return Container* for polymorphism)
  * ============================================================================ */
-
-/* Create a range of integers as a generic container */
-static Container *create_int_range(int start, int end) {
-    Vector *vec = vector_create(sizeof(int));
-    if (!vec) return NULL;
-
-    for (int i = start; i <= end; i++) {
-        if (vector_push(vec, &i) != LC_OK) {
-            vector_destroy(vec);
-            return NULL;
-        }
-    }
-    return (Container *)vec;
-}
 
 /* Create a string vector from a sentence (generic container) */
 static Container *create_string_vector(const char *sentence) {
@@ -840,6 +819,22 @@ static void demo_iterator_pipelines(void) {
     iter_fold(it, &sum, sum_ints);
     printf("Sum of all numbers: %d\n", sum);
 
+    it = HeapIter((Container *)numbers);
+    const int *val = iter_find(it, is_even);
+    printf("Find even: %d\n", *val);
+
+    it = HeapIter((Container *)numbers);
+    it = iter_peekable(it);
+    val = iter_peek(it);
+    printf("Peek first: %d\n", *(const int *)val);
+    val = iter_peek(it);
+    printf("Peek again (same): %d\n", *(const int *)val);
+    val = iter_next(it);
+    printf("Next (consumes): %d\n", *(const int *)val);
+    val = iter_peek(it);
+    printf("Peek after next: %d\n", *(const int *)val);
+    iter_destroy(it);
+
     IntVector_destroy(numbers);
     IntVector_destroy(result_nums);
 
@@ -861,6 +856,7 @@ static void demo_iterator_pipelines(void) {
 
     result = iter_collect(it);
     StringVector *result_strs = (StringVector *)result;
+
 
     printf("\nAfter remove_punct + to_upper:\n");
     for (size_t i = 0; i < StringVector_len(result_strs); i++) {

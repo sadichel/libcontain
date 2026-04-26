@@ -44,7 +44,6 @@ struct HashSetImpl {
     uint16_t item_offset;    /* offset from entry start to item data */
     uint16_t item_size;      /* 0 = string mode */
     uint32_t stride;         /* total entry size (including next pointer) */
-    size_t   cached_hash;
 };
 
 /* Hash entry stored in buckets */
@@ -77,8 +76,6 @@ static HashSetEntry *hashset_entry_create(HashSet *set, const void *item) {
         return NULL;
     }
 
-    impl->cached_hash = 0;
-    
     entry->next = NULL;
     set->container.len++;
     
@@ -91,8 +88,6 @@ static void hashset_entry_free(HashSet *set, HashSetEntry *entry) {
 
     void *item_slot = lc_slot_at(entry->data, impl->item_offset);
     lc_slot_free(item_slot, impl->item_size);
-    
-    impl->cached_hash = 0;
 
     allocator_free(set->alloc, entry);
     set->container.len--;
@@ -237,7 +232,6 @@ static HashSet *hashset_create_impl(const HashSetBuilder *cfg, const HashSetEntr
     impl->item_size = (uint16_t)cfg->item_size;
     impl->item_offset = layout->item_offset;
     impl->stride = layout->stride;
-    impl->cached_hash = 0;
     
     ctx.set->container.items = ctx.buckets;
     ctx.set->container.len = 0;
@@ -287,7 +281,6 @@ static HashSet *hashset_create_from_impl(const HashSet *src, size_t capacity, bo
     impl->item_size = src_impl->item_size;
     impl->item_offset = src_impl->item_offset;
     impl->stride = src_impl->stride;
-    impl->cached_hash = 0;
   
     ctx.set->container.items = ctx.buckets;
     ctx.set->container.len = 0;
@@ -619,8 +612,6 @@ static int hashset_merge_impl(HashSet *dst, const HashSet *src) {
     dst->container.capacity = tmp_cap;
     dst->container.len = tmp_len;
 
-    ((HashSetImpl *)dst->impl)->cached_hash = 0;
-
     hashset_destroy(tmp);
     return LC_OK;
 }
@@ -684,7 +675,6 @@ bool hashset_is_empty(const HashSet *set) { return !set || set->container.len ==
 
 size_t hashset_hash(const HashSet *set) {
     if (!set || set->container.len == 0) return 0;
-    if (set->impl->cached_hash) return set->impl->cached_hash;
 
     HashSetEntry **buckets = (HashSetEntry **)set->container.items;
     HashSetImpl *impl = (HashSetImpl *)set->impl;
@@ -703,8 +693,7 @@ size_t hashset_hash(const HashSet *set) {
         }
     }
 
-    impl->cached_hash = lc_hash_mix(h ^ set->container.len);
-    return impl->cached_hash;
+    return lc_hash_mix(h ^ set->container.len);
 }
 
 bool hashset_subset(const HashSet *A, const HashSet *B) {
@@ -742,11 +731,6 @@ bool hashset_equals(const HashSet *A, const HashSet *B) {
     if (A->container.len != B->container.len) return false;
     
     if (A->impl->item_size != B->impl->item_size) return false;
-
-    if (A->impl->cached_hash != 0 && B->impl->cached_hash != 0 
-        && A->impl->cached_hash != B->impl->cached_hash) {
-        return false;
-    }
 
     return hashset_subset(A, B);
 }

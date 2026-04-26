@@ -235,57 +235,117 @@
     /** @brief Insert or update a key-value pair */ \
     static inline int name##_insert(name *n, K key, V val) { \
         LC_MAP_DEBUG_NULL(n, #name "_insert"); \
-        return hashmap_insert((HashMap*)n, \
-            (ksize == 0) ? (const void*)(*(void**)&key) : &key, \
-            (vsize == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (ksize != 0 && vsize != 0) { \
+            return hashmap_insert((HashMap*)n, &key, &val); \
+        } \
+        const void *kptr, *vptr; \
+        if (ksize == 0) { \
+            memcpy((void*)&kptr, &key, sizeof(void*)); \
+        } else { \
+            kptr = &key; \
+        } \
+        if (vsize == 0) { \
+            memcpy((void*)&vptr, &val, sizeof(void*)); \
+        } else { \
+            vptr = &val; \
+        } \
+        return hashmap_insert((HashMap*)n, kptr, vptr); \
     } \
     \
     /** @brief Remove a key-value pair by key */ \
     static inline int name##_remove(name *n, K key) { \
         LC_MAP_DEBUG_NULL(n, #name "_remove"); \
-        return hashmap_remove((HashMap*)n, (ksize == 0) ? (const void*)(*(void**)&key) : &key); \
+        if (ksize != 0) { \
+            return hashmap_remove((HashMap*)n, &key); \
+        } \
+        void *kptr; \
+        memcpy(&kptr, &key, sizeof(void*)); \
+        return hashmap_remove((HashMap*)n, kptr); \
     } \
     \
     /** @brief Remove a specific key-value pair (both must match) */ \
     static inline int name##_remove_entry(name *n, K key, V val) { \
         LC_MAP_DEBUG_NULL(n, #name "_remove_entry"); \
-        return hashmap_remove_entry((HashMap*)n, \
-            (ksize == 0) ? (const void*)(*(void**)&key) : &key, \
-            (vsize == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (ksize != 0 && vsize != 0) { \
+            return hashmap_remove_entry((HashMap*)n, &key, &val); \
+        } \
+        const void *kptr, *vptr; \
+        if (ksize == 0) { \
+            memcpy((void*)&kptr, &key, sizeof(void*)); \
+        } else { \
+            kptr = &key; \
+        } \
+        if (vsize == 0) { \
+            memcpy((void*)&vptr, &val, sizeof(void*)); \
+        } else { \
+            vptr = &val; \
+        } \
+        return hashmap_remove_entry((HashMap*)n, kptr, vptr); \
     } \
     \
     /** @brief Get a value by key (panics if key not exist) */ \
     static inline V name##_get(const name *n, K key) { \
         LC_MAP_DEBUG_NULL(n, #name "_get"); \
-        return *(V*)hashmap_get_mut((HashMap*)n, (ksize == 0) ? (const void*)(*(void**)&key) : &key); \
+        if (ksize != 0) { \
+            return *(V*)hashmap_get_mut((HashMap*)n, &key); \
+        } \
+        void *kptr; \
+        memcpy(&kptr, &key, sizeof(void*)); \
+        return *(V*)hashmap_get_mut((HashMap*)n, kptr); \
     } \
     \
     /** @brief Get a value by key with a default fallback */ \
     static inline V name##_get_or_default(const name *n, K key, V default_val) { \
         LC_MAP_DEBUG_NULL(n, #name "_get_or_default"); \
-        const void *val = hashmap_get_mut_or_default((HashMap*)n, \
-            (ksize == 0) ? (const void*)(*(void**)&key) : &key, &default_val); \
+        if (ksize != 0) { \
+            return *(V*)hashmap_get_mut_or_default((HashMap*)n, &key, &default_val); \
+        } \
+        void *kptr; \
+        memcpy(&kptr, &key, sizeof(void*)); \
+        const void *val = hashmap_get_mut_or_default((HashMap*)n, kptr, &default_val); \
         return *(V*)val; \
     } \
     \
     /** @brief Get a mutable pointer to a value by key (returns NULL if not found) */ \
     static inline V* name##_get_mut(name *n, K key) { \
         LC_MAP_DEBUG_NULL(n, #name "_get_mut"); \
-        return (V*)hashmap_get_mut((HashMap*)n, (ksize == 0) ? (const void*)(*(void**)&key) : &key); \
+        if (ksize != 0) { \
+            return (V*)hashmap_get_mut((HashMap*)n, &key); \
+        } \
+        void *kptr; \
+        memcpy(&kptr, &key, sizeof(void*)); \
+        return (V*)hashmap_get_mut((HashMap*)n, kptr); \
     } \
     \
     /** @brief Check if a key exists in the hash map */ \
     static inline bool name##_contains(const name *n, K key) { \
         LC_MAP_DEBUG_NULL(n, #name "_contains"); \
-        return hashmap_contains((HashMap*)n, (ksize == 0) ? (const void*)(*(void**)&key) : &key); \
+        if (ksize != 0) { \
+            return hashmap_contains((HashMap*)n, &key); \
+        } \
+        void *kptr; \
+        memcpy(&kptr, &key, sizeof(void*)); \
+        return hashmap_contains((HashMap*)n, kptr); \
     } \
     \
     /** @brief Check if a specific key-value pair exists */ \
     static inline bool name##_contains_entry(const name *n, K key, V val) { \
         LC_MAP_DEBUG_NULL(n, #name "_contains_entry"); \
-        return hashmap_contains_entry((HashMap*)n, \
-            (ksize == 0) ? (const void*)(*(void**)&key) : &key, \
-            (vsize == 0) ? (const void*)(*(void**)&val) : &val); \
+        if (ksize != 0 && vsize != 0) { \
+            return hashmap_contains_entry((HashMap*)n, &key, &val); \
+        } \
+        const void *kptr, *vptr; \
+        if (ksize == 0) { \
+            memcpy((void*)&kptr, &key, sizeof(void*)); \
+        } else { \
+            kptr = &key; \
+        } \
+        if (vsize == 0) { \
+            memcpy((void*)&vptr, &val, sizeof(void*)); \
+        } else { \
+            vptr = &val; \
+        } \
+        return hashmap_contains_entry((HashMap*)n, kptr, vptr); \
     } \
     \
     /** @brief Merge another hash map into this one (in-place) */ \

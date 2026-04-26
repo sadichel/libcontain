@@ -13,7 +13,6 @@
 #include "assertion.h"
 #include "timer.h"
 
-#define VECTOR_IMPLEMENTATION
 #include <contain/vector.h>
 #include <contain/chainer2.h>
 
@@ -56,12 +55,6 @@ static void *int_to_double(const Container *c, const void *e, void *buf) {
 static void *int_to_float(const Container *c, const void *e, void *buf) {
     (void)c;
     *(float *)buf = (float)*(const int *)e;
-    return buf;
-}
-
-static void *add_ten(const Container *c, const void *e, void *buf) {
-    (void)c;
-    *(int *)buf = *(const int *)e + 10;
     return buf;
 }
 

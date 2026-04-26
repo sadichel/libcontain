@@ -8,7 +8,6 @@
 #include <string.h>
 #include <time.h>
 
-#define HASHMAP_IMPLEMENTATION
 #include <contain/hashmap.h>
 
 /* Volatile sink to prevent optimization */

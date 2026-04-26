@@ -17,8 +17,6 @@
 #include "assertion.h"
 #include "timer.h"
 
-#define VECTOR_IMPLEMENTATION
-#define HASHMAP_IMPLEMENTATION
 #include <contain/vector.h>
 #include <contain/hashmap.h>
 #include <contain/iterator.h>
@@ -486,8 +484,8 @@ int test_iter_zip_basic(void) {
 
 int test_iter_peek_basic(void) {
     Vector *vec = create_test_vector(5); // [0, 1, 2, 3, 4]
-    Iterator *it = peek_iter(HeapIter((Container *)vec));
-    ASSERT_NOT_NULL(it, "peek_iter creation failed");
+    Iterator *it = iter_peekable(HeapIter((Container *)vec));
+    ASSERT_NOT_NULL(it, "iter_peekable creation failed");
 
     const int *p1 = (const int *)iter_peek(it);
     ASSERT_NOT_NULL(p1, "First peek failed");
@@ -511,7 +509,7 @@ int test_iter_peek_basic(void) {
 int test_iter_peek_and_filter(void) {
     Vector *vec = create_test_vector(10);
     // [0, 2, 4, 6, 8]
-    Iterator *it = peek_iter(iter_filter(HeapIter((Container *)vec), is_even));
+    Iterator *it = iter_peekable(iter_filter(HeapIter((Container *)vec), is_even));
 
     const int *p1 = (const int *)iter_peek(it);
     ASSERT_EQUAL(*p1, 0, "Filter-peek failed");
@@ -529,7 +527,7 @@ int test_iter_peek_and_filter(void) {
 
 int test_iter_peek_at_end(void) {
     Vector *vec = create_test_vector(1);
-    Iterator *it = peek_iter(HeapIter((Container *)vec));
+    Iterator *it = iter_peekable(HeapIter((Container *)vec));
 
     iter_next(it);
     ASSERT_NULL(iter_peek(it), "Peek at end should be NULL");
@@ -555,7 +553,7 @@ int test_iter_peek_complex_chain(void) {
     Vector *vec = create_test_vector(10);
     
     Iterator *filt = iter_filter(HeapIter((Container *)vec), is_even);
-    Iterator *peekable = peek_iter(filt);
+    Iterator *peekable = iter_peekable(filt);
     Iterator *final = iter_map(peekable, add_ten, sizeof(int));
 
     const int *p = (const int *)iter_peek(peekable);

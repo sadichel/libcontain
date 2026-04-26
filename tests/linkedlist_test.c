@@ -26,21 +26,11 @@
 #include "assertion.h"
 #include "timer.h"
 
-#define LINKEDLIST_IMPLEMENTATION
 #include <contain/linkedlist.h>
 
 /* ============================================================================
  * Test Helpers
  * ============================================================================ */
-
-typedef struct {
-    int   id;
-    char *name;
-} Person;
-
-static int cmp_person(const void *a, const void *b) {
-    return ((const Person *)a)->id - ((const Person *)b)->id;
-}
 
 static int cmp_int(const void *a, const void *b) {
     return *(const int *)a - *(const int *)b;
@@ -58,14 +48,6 @@ typedef struct {
 typedef struct {
     alignas(64) uint8_t data[64];
 } Aligned64;
-
-static bool aligned32_eq(const Aligned32 *a, const Aligned32 *b) {
-    return memcmp(a->data, b->data, 32) == 0;
-}
-
-static bool aligned64_eq(const Aligned64 *a, const Aligned64 *b) {
-    return memcmp(a->data, b->data, 64) == 0;
-}
 
 /* Fill list with ints [0, n) */
 static void linkedlist_fill(LinkedList *list, int n) {
@@ -754,7 +736,7 @@ int test_linkedlist_append_strings(void) {
 
 int test_linkedlist_splice_same_allocator(void) {
     LinkedList *dst = linkedlist_create(sizeof(int));
-    LinkedList *src = linkedlist_create_from_impl(dst, true);
+    LinkedList *src = linkedlist_create_with_allocator(sizeof(int), linkedlist_allocator(dst));
 
     for (int i = 0; i < 4; i++) {
         int val = i;
