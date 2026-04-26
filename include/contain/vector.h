@@ -1966,7 +1966,6 @@ static const void *vector_next(Iterator *it) {
         it->pos--;
         void *slot = (uint8_t *)vec->container.items + (vec->impl->stride * it->pos);
         return lc_slot_get(slot, vec->impl->item_size);
-        return slot;
     }
 }
 
