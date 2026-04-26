@@ -65,7 +65,7 @@ struct BenchResult {
     double cpp_min;
     double cpp_avg;
     double cpp_max;
-    double diff_percent;
+    double speedup;
     const char* winner;
 };
 
@@ -105,11 +105,21 @@ void measure_and_record(const char* name, int N, FuncC&& func_c, FuncCpp&& func_
     }
     double cpp_avg = cpp_sum / RUNS;
     
-    /* Calculate percentage difference */
-    double diff_percent = ((cpp_avg - c_avg) / c_avg) * 100.0;
-    const char* winner = (c_avg < cpp_avg) ? "C" : "C++";
+    /* Calculate speedup (positive = C faster, negative = C++ faster) */
+    double speedup;
+    const char* winner;
     
-    results.push_back({name, N, c_min, c_avg, c_max, cpp_min, cpp_avg, cpp_max, diff_percent, winner});
+    if (c_avg < cpp_avg) {
+        /* C is faster: positive speedup */
+        speedup = cpp_avg / c_avg;
+        winner = "C";
+    } else {
+        /* C++ is faster: negative speedup */
+        speedup = -(c_avg / cpp_avg);
+        winner = "C++";
+    }
+    
+    results.push_back({name, N, c_min, c_avg, c_max, cpp_min, cpp_avg, cpp_max, speedup, winner});
 }
 
 /* ============================================================================
@@ -596,22 +606,21 @@ int main() {
         [&](){ bench_c_str_str_map_get(N_STRING); },
         [&](){ bench_cpp_str_str_unordered_map_get(N_STRING); });
     
-    /* Print results table with percentage */
-    std::cout << "+--------------------------+----------+-----------+-----------+----------+----------+\n";
-    std::cout << "| Operation                | N        | C (ms)    | C++ (ms)  | Winner   | Diff     |\n";
-    std::cout << "+--------------------------+----------+-----------+-----------+----------+----------+\n";
+    /* Print results table with speedup */
+    std::cout << "+--------------------------+----------+-----------+-----------+----------+------------+\n";
+    std::cout << "| Operation                | N        | C (ms)    | C++ (ms)  | Winner   | Speedup (x)|\n";
+    std::cout << "+--------------------------+----------+-----------+-----------+----------+------------+\n";
 
     for (const auto& r : results) {
-        double diff = (r.cpp_avg - r.c_avg) / r.c_avg * 100.0;
         std::cout << "| " << std::setw(24) << std::left << r.name 
                 << " | " << std::setw(8) << r.n 
                 << " | " << std::setw(9) << std::right << std::fixed << std::setprecision(2) << r.c_avg
                 << " | " << std::setw(9) << r.cpp_avg
                 << " | " << std::setw(6) << std::right << r.winner 
-                << "   | " << std::setw(7) << std::showpos << std::setprecision(1) << diff << std::noshowpos << "% |\n";
+                << "   | " << std::setw(10) << std::showpos << std::fixed << std::setprecision(2) << r.speedup << std::noshowpos << " |\n";
     }
 
-    std::cout << "+--------------------------+----------+-----------+-----------+----------+----------+\n";
+    std::cout << "+--------------------------+----------+-----------+-----------+----------+------------+\n";
 
     int c_count = 0, cpp_count = 0;
     for (const auto& r : results) {
@@ -620,8 +629,8 @@ int main() {
     }
 
     std::cout << "| TOTAL WINS               |          |           |           | C " 
-          << std::setw(2) << c_count << "     | C++ " << std::setw(2) << cpp_count << "   |\n";
-    std::cout << "+--------------------------+----------+-----------+-----------+----------+----------+\n";
+          << std::setw(2) << c_count << "     | C++ " << std::setw(2) << cpp_count << "    |\n";
+    std::cout << "+--------------------------+----------+-----------+-----------+----------+------------+\n";
 
     std::cout << "\n";
 

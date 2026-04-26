@@ -203,20 +203,31 @@ int main(void) {
     }
     
     /* Print results */
-    printf("+--------------------------+----------+-----------------+-----------------+------------+----------+\n");
-    printf("| Operation                | N        | stb_ds (ms)     | libcontain (ms) | Winner     | Diff (%%) |\n");
-    printf("+--------------------------+----------+-----------------+-----------------+------------+----------+\n");
+    printf("+--------------------------+----------+-----------------+-----------------+------------+------------+\n");
+    printf("| Operation                | N        | stb_ds (ms)     | libcontain (ms) | Winner     | Speedup (x)|\n");
+    printf("+--------------------------+----------+-----------------+-----------------+------------+------------+\n");
     
     for (int i = 0; benches[i].name; i++) {
-        double diff = ((benches[i].lc - benches[i].stb) / benches[i].stb) * 100.0;
-        const char *winner = (benches[i].lc < benches[i].stb) ? "libcontain" : "stb_ds";
-        printf("| %-24s | %-8d | %-15.3f | %-15.3f | %-10s | %+7.1f%% |\n",
+        double speedup;
+        const char *winner;
+        
+        if (benches[i].lc < benches[i].stb) {
+            /* libcontain is faster: positive speedup */
+            speedup = benches[i].stb / benches[i].lc;
+            winner = "libcontain";
+        } else {
+            /* stb_ds is faster: negative speedup */
+            speedup = -(benches[i].lc / benches[i].stb);
+            winner = "stb_ds";
+        }
+        
+        printf("| %-24s | %-8d | %-15.3f | %-15.3f | %-10s | %+10.2f |\n",
                benches[i].name, benches[i].n,
                benches[i].stb * 1000, benches[i].lc * 1000,
-               winner, diff);
+               winner, speedup);
     }
     
-    printf("+--------------------------+----------+-----------------+-----------------+------------+----------+\n");
+    printf("+--------------------------+----------+-----------------+-----------------+------------+------------+\n");
     
     /* Summary */
     printf("\n");

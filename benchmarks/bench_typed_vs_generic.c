@@ -478,25 +478,34 @@ int main(void) {
         benches[i].typed_time = typed_total / RUNS;
     }
     
-    printf("+--------------------------------+----------+-----------------+-----------------+-----------------+\n");
-    printf("| Operation                      | N        | Generic (ms)    | Typed (ms)      | Diff (%%)        |\n");
-    printf("+--------------------------------+----------+-----------------+-----------------+-----------------+\n");
+    /* Print results with Winner and Speedup columns */
+    printf("+--------------------------------+----------+-----------------+-----------------+------------+------------+\n");
+    printf("| Operation                      | N        | Generic (ms)    | Typed (ms)      | Winner     | Speedup (x)|\n");
+    printf("+--------------------------------+----------+-----------------+-----------------+------------+------------+\n");
     
     for (int i = 0; benches[i].name; i++) {
-        double diff = ((benches[i].typed_time - benches[i].generic_time) / benches[i].generic_time) * 100.0;
-        const char *winner = (benches[i].typed_time < benches[i].generic_time) ? "Typed" : "Generic";
-        printf("| %-30s | %-8d | %15.3f | %15.3f | %-7s %+6.1f%% |\n",
+        double speedup;
+        const char *winner;
+        
+        if (benches[i].typed_time < benches[i].generic_time) {
+            /* Typed is faster: positive speedup */
+            speedup = benches[i].generic_time / benches[i].typed_time;
+            winner = "Typed";
+        } else {
+            /* Generic is faster: negative speedup */
+            speedup = -(benches[i].typed_time / benches[i].generic_time);
+            winner = "Generic";
+        }
+        
+        printf("| %-30s | %-8d | %15.3f | %15.3f | %-10s | %+10.2f |\n",
                benches[i].name, benches[i].n,
                benches[i].generic_time * 1000,
                benches[i].typed_time * 1000,
-               winner, diff);
+               winner, speedup);
     }
     
-    printf("+--------------------------------+----------+-----------------+-----------------+-----------------+\n");
+    printf("+--------------------------------+----------+-----------------+-----------------+------------+------------+\n");
     
-    printf("\n");
-    printf("Note: Negative diff (%%) means Typed is faster\n");
-    printf("      Positive diff (%%) means Generic is faster\n");
     printf("\n");
     
     return 0;

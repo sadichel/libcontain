@@ -161,20 +161,31 @@ int main(void) {
     }
     
     /* Print results */
-    printf("+--------------------------+----------+-----------------+-----------------+------------+----------+\n");
-    printf("| Operation                | N        | klib (ms)       | libcontain (ms) | Winner     | Diff (%%) |\n");
-    printf("+--------------------------+----------+-----------------+-----------------+------------+----------+\n");
+    printf("+--------------------------+----------+-----------------+-----------------+------------+------------+\n");
+    printf("| Operation                | N        | klib (ms)       | libcontain (ms) | Winner     | Speedup (x)|\n");
+    printf("+--------------------------+----------+-----------------+-----------------+------------+------------+\n");
     
     for (int i = 0; benches[i].name; i++) {
-        double diff = ((benches[i].libcontain - benches[i].klib) / benches[i].klib) * 100.0;
-        const char *winner = (benches[i].libcontain < benches[i].klib) ? "libcontain" : "klib";
-        printf("| %-24s | %-8d | %-15.3f | %-15.3f | %-10s | %+7.1f%% |\n",
+        double speedup;
+        const char *winner;
+        
+        if (benches[i].libcontain < benches[i].klib) {
+            /* libcontain is faster: positive speedup */
+            speedup = benches[i].klib / benches[i].libcontain;
+            winner = "libcontain";
+        } else {
+            /* klib is faster: negative speedup */
+            speedup = -(benches[i].libcontain / benches[i].klib);
+            winner = "klib";
+        }
+        
+        printf("| %-24s | %-8d | %-15.3f | %-15.3f | %-10s | %+10.2f |\n",
                benches[i].name, benches[i].n,
                benches[i].klib * 1000, benches[i].libcontain * 1000,
-               winner, diff);
+               winner, speedup);
     }
     
-    printf("+--------------------------+----------+-----------------+-----------------+------------+----------+\n");
+    printf("+--------------------------+----------+-----------------+-----------------+------------+------------+\n");
     
     /* Summary */
     printf("\n");
