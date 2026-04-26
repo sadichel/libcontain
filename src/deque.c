@@ -65,11 +65,6 @@ static inline size_t deque_phys_raw(size_t head, size_t pos, size_t cap) {
     return (head + pos) % cap;
 }
 
-/* Keep deque_phys using safe modulo */
-static inline size_t deque_phys(const Deque *deq, size_t logical_pos) {
-    return deque_phys_raw(deq->head, logical_pos, deq->container.capacity);
-}
-
 /* Calculate new capacity with exponential growth (×2) */
 static inline size_t deque_grow(size_t stride, size_t current_cap, size_t min_cap) {
     const size_t max_cap = SIZE_MAX / stride;
