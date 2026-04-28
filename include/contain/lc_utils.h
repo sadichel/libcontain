@@ -59,6 +59,13 @@ typedef union {
 #define LC_DEBUG_CHECK(cond, msg) ((void)0)
 #endif
 
+/* LC_UNUSED: Mark a function or variable as potentially unused to suppress warnings */
+#if defined(__GNUC__) || defined(__clang__)
+    #define LC_UNUSED __attribute__((unused))
+#else
+    #define LC_UNUSED
+#endif
+
 /**
  * @defgroup lc_error Error Codes
  * @brief Unified error codes for libcontain

@@ -771,13 +771,8 @@ static inline size_t deque_phys_step(size_t head, size_t pos, size_t cap) {
 }
 
 /* General wrap — safe for any value */
-static inline size_t deque_phys_raw(size_t head, size_t pos, size_t cap) {
+static inline size_t deque_phys_wrap(size_t head, size_t pos, size_t cap) {
     return (head + pos) % cap;
-}
-
-/* Keep deque_phys using safe modulo */
-static inline size_t deque_phys(const Deque *deq, size_t logical_pos) {
-    return deque_phys_raw(deq->head, logical_pos, deq->container.capacity);
 }
 
 /* Calculate new capacity with exponential growth (×2) */
@@ -902,7 +897,7 @@ static void *deque_insert_slot(Deque *deq, size_t pos, size_t count) {
         /* Shift suffix tail-ward (right) */
         for (size_t i = old_len; i > pos; i--) {
             size_t src_phys = deque_phys_step(old_head, i - 1, cap);
-            size_t dst_phys = deque_phys_raw(old_head, i - 1 + count, cap);
+            size_t dst_phys = deque_phys_wrap(old_head, i - 1 + count, cap);
             memcpy(base + (dst_phys * stride), base + (src_phys * stride), stride);
         }
     }
@@ -1150,7 +1145,7 @@ void deque_destroy(Deque *deq) {
         uint8_t *base = (uint8_t *)deq->container.items;
 
         for (size_t i = 0; i < len; i++) {
-            size_t idx = deque_phys_raw(head, i, cap);
+            size_t idx = deque_phys_wrap(head, i, cap);
             free(*(char **)(base + (idx * stride)));
         }
     }
@@ -1229,7 +1224,7 @@ static int deque_append_fixed(Deque *dst, size_t pos, const Deque *src, size_t f
         const uint8_t *src_base = (const uint8_t *)src->container.items;
         size_t src_cap = src->container.capacity;
         size_t src_head = src->head;
-        size_t phys_start = deque_phys_raw(src_head, from, src_cap);
+        size_t phys_start = deque_phys_wrap(src_head, from, src_cap);
         size_t len1 = (phys_start + count <= src_cap) ? count : (src_cap - phys_start);
 
         memcpy(dst_slots, src_base + (phys_start * stride), len1 * stride);
@@ -1513,7 +1508,7 @@ int deque_splice(Deque *dst, size_t pos, size_t remove_count, const Deque *src, 
         if (!temp) return LC_ENOMEM;
 
         for (size_t i = 0; i < insert_count; i++) {
-            size_t phys = deque_phys_raw(src_head, src_from + i, src_cap);
+            size_t phys = deque_phys_wrap(src_head, src_from + i, src_cap);
             const void *src_slot = src_base + (phys * stride);
 
             if (isize == 0) {
@@ -1542,7 +1537,7 @@ int deque_splice(Deque *dst, size_t pos, size_t remove_count, const Deque *src, 
         const size_t dst_cap = dst->container.capacity;
         uint8_t *dst_base = (uint8_t *)dst->container.items;
 
-        const size_t phys_start = deque_phys_raw(dst_head, pos, dst_cap);
+        const size_t phys_start = deque_phys_wrap(dst_head, pos, dst_cap);
         const size_t len_to_end = dst_cap - phys_start;
 
         if (insert_count <= len_to_end) {

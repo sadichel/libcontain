@@ -30,11 +30,11 @@
 
 /* Alignment test types */
 typedef struct {
-    alignas(32) uint8_t data[32];
+    uint8_t data[32];
 } Aligned32;
 
 typedef struct {
-    alignas(64) uint8_t data[64];
+    uint8_t data[64];
 } Aligned64;
 
 /* Fill set with ints [0, n) */
@@ -815,7 +815,7 @@ int test_hashset_large_insert(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
         int val = (int)i;
-        ASSERT_EQUAL(hashset_insert(set, &val), LC_OK, "insert failed at %zu", i);
+        ASSERT_EQUAL_FMT(hashset_insert(set, &val), LC_OK, "insert failed at %zu", i);
     }
     double insert_time = timer_elapsed(&t);
     printf("    Insert %zu elements: %.3f ms\n", N, insert_time * 1000);
@@ -825,7 +825,7 @@ int test_hashset_large_insert(void) {
     t = timer_start();
     for (size_t i = 0; i < N; i++) {
         int val = (int)i;
-        ASSERT_TRUE(hashset_contains(set, &val), "missing element at %zu", i);
+        ASSERT_TRUE_FMT(hashset_contains(set, &val), "missing element at %zu", i);
     }
     double contains_time = timer_elapsed(&t);
     printf("    Contains %zu elements: %.3f ms\n", N, contains_time * 1000);
@@ -852,7 +852,7 @@ int test_hashset_large_clone(void) {
 
     for (size_t i = 0; i < N; i++) {
         int val = (int)i;
-        ASSERT_TRUE(hashset_contains(clone, &val), "clone missing element at %zu", i);
+        ASSERT_TRUE_FMT(hashset_contains(clone, &val), "clone missing element at %zu", i);
     }
 
     hashset_destroy(set);
@@ -868,7 +868,7 @@ int test_hashset_large_strings(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
         snprintf(buf, sizeof(buf), "string_%zu", i);
-        ASSERT_EQUAL(hashset_insert(set, buf), LC_OK, "insert string failed at %zu", i);
+        ASSERT_EQUAL_FMT(hashset_insert(set, buf), LC_OK, "insert string failed at %zu", i);
     }
     double insert_time = timer_elapsed(&t);
     printf("    Insert %zu strings: %.3f ms\n", N, insert_time * 1000);
@@ -876,7 +876,7 @@ int test_hashset_large_strings(void) {
     t = timer_start();
     for (size_t i = 0; i < N; i++) {
         snprintf(buf, sizeof(buf), "string_%zu", i);
-        ASSERT_TRUE(hashset_contains(set, buf), "missing string at %zu", i);
+        ASSERT_TRUE_FMT(hashset_contains(set, buf), "missing string at %zu", i);
     }
     double contains_time = timer_elapsed(&t);
     printf("    Contains %zu strings: %.3f ms\n", N, contains_time * 1000);

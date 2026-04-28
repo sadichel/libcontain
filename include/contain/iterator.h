@@ -779,7 +779,7 @@ static inline const void *iter_peek(Iterator *it) {
         return NULL;
     }
 
-    PeekIter *p = (PeekIter *)it;
+    PeekIter *p = (PeekIter *)((void *)it);
     if (!p->has_stashed) {
         p->stashed = iter_next(p->inner);
         if (p->stashed) {
@@ -933,7 +933,7 @@ static inline bool iter_all(Iterator *it, bool (*pred)(const Container *, const 
     bool res = true;
     const void *e;
     while ((e = iter_next(it))) {
-        if (!pred(it->container, e)) {
+        if (pred && !pred(it->container, e)) {
             res = false;
             break;
         }

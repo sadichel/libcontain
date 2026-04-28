@@ -29,11 +29,11 @@
 
 /* Alignment test types */
 typedef struct {
-    alignas(32) uint8_t data[32];
+    uint8_t data[32];
 } Aligned32;
 
 typedef struct {
-    alignas(64) uint8_t data[64];
+    uint8_t data[64];
 } Aligned64;
 
 /* Fill map with n int→int entries [0,n) → [100,100+n) */
@@ -906,7 +906,7 @@ int test_hashmap_large_insert(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
         int val = (int)(i * 2);
-        ASSERT_EQUAL(hashmap_insert(map, &i, &val), LC_OK, "insert failed at %zu", i);
+        ASSERT_EQUAL_FMT(hashmap_insert(map, &i, &val), LC_OK, "insert failed at %zu", i);
     }
     double insert_time = timer_elapsed(&t);
     printf("    Insert %zu entries: %.3f ms\n", N, insert_time * 1000);
@@ -916,8 +916,8 @@ int test_hashmap_large_insert(void) {
     t = timer_start();
     for (size_t i = 0; i < N; i++) {
         int *val = (int *)hashmap_get(map, &i);
-        ASSERT_NOT_NULL(val, "missing element at %zu", i);
-        ASSERT_EQUAL(*val, (int)(i * 2), "wrong value at %zu", i);
+        ASSERT_NOT_NULL_FMT(val, "missing element at %zu", i);
+        ASSERT_EQUAL_FMT(*val, (int)(i * 2), "wrong value at %zu", i);
     }
     double get_time = timer_elapsed(&t);
     printf("    Get %zu entries: %.3f ms\n", N, get_time * 1000);
@@ -948,8 +948,8 @@ int test_hashmap_large_clone(void) {
 
     for (size_t i = 0; i < N; i++) {
         int *val = (int *)hashmap_get(clone, &i);
-        ASSERT_NOT_NULL(val, "clone missing element at %zu", i);
-        ASSERT_EQUAL(*val, (int)(i * 2), "clone wrong value at %zu", i);
+        ASSERT_NOT_NULL_FMT(val, "clone missing element at %zu", i);
+        ASSERT_EQUAL_FMT(*val, (int)(i * 2), "clone wrong value at %zu", i);
     }
 
     hashmap_destroy(map);
@@ -980,7 +980,7 @@ int test_hashmap_large_strings(void) {
 
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
-        ASSERT_EQUAL(hashmap_insert(map, keys[i], vals[i]), LC_OK, "insert failed at %zu", i);
+        ASSERT_EQUAL_FMT(hashmap_insert(map, keys[i], vals[i]), LC_OK, "insert failed at %zu", i);
     }
     double insert_time = timer_elapsed(&t);
     printf("    Insert %zu string entries: %.3f ms\n", N, insert_time * 1000);
@@ -988,8 +988,8 @@ int test_hashmap_large_strings(void) {
     t = timer_start();
     for (size_t i = 0; i < N; i++) {
         const char *val = (const char *)hashmap_get(map, keys[i]);
-        ASSERT_NOT_NULL(val, "missing key at %zu", i);
-        ASSERT_STR_EQUAL(val, vals[i], "wrong value at %zu", i);
+        ASSERT_NOT_NULL_FMT(val, "missing key at %zu", i);
+        ASSERT_STR_EQUAL_FMT(val, vals[i], "wrong value at %zu", i);
     }
     double get_time = timer_elapsed(&t);
     printf("    Get %zu string entries: %.3f ms\n", N, get_time * 1000);

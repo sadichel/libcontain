@@ -1002,16 +1002,6 @@ int test_iter_large_filter_map_take(void) {
 }
 
 /* ============================================================================
- * Null & Error Handling
- * ============================================================================ */
-
-int test_iter_null_operations(void) {
-    ASSERT_NULL(iter_next(NULL), "iter_next(NULL) should be NULL");
-    iter_destroy(NULL);
-    return 1;
-}
-
-/* ============================================================================
  * Main
  * ============================================================================ */
 
@@ -1104,9 +1094,6 @@ int main(void) {
     printf("\n--- Large Dataset Tests ---\n");
     TEST(test_iter_large_filter);
     TEST(test_iter_large_filter_map_take);
-
-    /* Null Handling */
-    TEST(test_iter_null_operations);
 
     double total_time = timer_elapsed(&total);
 

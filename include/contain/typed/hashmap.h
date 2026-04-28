@@ -42,7 +42,7 @@
  *   }
  * @endcode
  *
- * @warning The macro generates static inline functions. Include this header
+ * @warning The macro generates static inline LC_UNUSED functions. Include this header
  *          in exactly the same way as hashmap.h — no special implementation
  *          define is needed.
  */
@@ -172,44 +172,44 @@
     /* ===== Creation & Destruction ===== */ \
     \
     /** @brief Create a new empty typed hash map */ \
-    static inline name* name##_create(void) { \
+    static inline LC_UNUSED name* name##_create(void) { \
         return (name*)hashmap_create(ksize, vsize); \
     } \
     \
     /** @brief Create a new typed hash map with specified initial bucket count */ \
-    static inline name* name##_create_with_capacity(size_t cap) { \
+    static inline LC_UNUSED name* name##_create_with_capacity(size_t cap) { \
         return (name*)hashmap_create_with_capacity(ksize, vsize, cap); \
     } \
     \
     /** @brief Create a new typed hash map with a custom key hash function */ \
-    static inline name* name##_create_with_hasher(lc_Hasher hasher) { \
+    static inline LC_UNUSED name* name##_create_with_hasher(lc_Hasher hasher) { \
         return (name*)hashmap_create_with_hasher(ksize, vsize, hasher); \
     } \
     \
     /** @brief Create a new typed hash map with custom key and value comparators */ \
-    static inline name* name##_create_with_comparator(lc_Comparator kcmp, lc_Comparator vcmp) { \
+    static inline LC_UNUSED name* name##_create_with_comparator(lc_Comparator kcmp, lc_Comparator vcmp) { \
         return (name*)hashmap_create_with_comparator(ksize, vsize, kcmp, vcmp); \
     } \
     \
     /** @brief Create a new typed hash map with aligned keys and values */ \
-    static inline name* name##_create_aligned(size_t key_align, size_t val_align) { \
+    static inline LC_UNUSED name* name##_create_aligned(size_t key_align, size_t val_align) { \
         return (name*)hashmap_create_aligned(ksize, vsize, key_align, val_align); \
     } \
     \
     /** @brief Destroy a typed hash map and free all resources */ \
-    static inline void name##_destroy(name *n) { \
+    static inline LC_UNUSED void name##_destroy(name *n) { \
         hashmap_destroy((HashMap*)n); \
     } \
     \
     /* ===== Container Access ===== */ \
     \
     /** @brief Get the underlying generic HashMap pointer (zero-cost cast) */ \
-    static inline HashMap *name##_unwrap(name *n) { \
+    static inline LC_UNUSED HashMap *name##_unwrap(name *n) { \
         return (HashMap*)n; \
     } \
     \
     /** @brief Get the underlying generic HashMap pointer (const, zero-cost cast) */ \
-    static inline const HashMap *name##_unwrap_const(const name *n) { \
+    static inline LC_UNUSED const HashMap *name##_unwrap_const(const name *n) { \
         return (const HashMap*)n; \
     } \
     \
@@ -219,13 +219,13 @@
      * After calling wrap, do NOT destroy the original container. \
      * Use name##_destroy() to free both. \
      */ \
-    static inline name* name##_wrap(Container *c) { \
+    static inline LC_UNUSED name* name##_wrap(Container *c) { \
         LC_MAP_DEBUG_NULL(c, #name "_wrap"); \
         return (name*)c; \
     } \
     \
     /** @brief Create a new empty hash map of the same type */ \
-    static inline name* name##_instance(const name *n) { \
+    static inline LC_UNUSED name* name##_instance(const name *n) { \
         LC_MAP_DEBUG_NULL(n, #name "_instance"); \
         return (name*)hashmap_instance((HashMap*)n); \
     } \
@@ -233,7 +233,7 @@
     /* ===== Core Operations ===== */ \
     \
     /** @brief Insert or update a key-value pair */ \
-    static inline int name##_insert(name *n, K key, V val) { \
+    static inline LC_UNUSED int name##_insert(name *n, K key, V val) { \
         LC_MAP_DEBUG_NULL(n, #name "_insert"); \
         if (ksize != 0 && vsize != 0) { \
             return hashmap_insert((HashMap*)n, &key, &val); \
@@ -253,7 +253,7 @@
     } \
     \
     /** @brief Remove a key-value pair by key */ \
-    static inline int name##_remove(name *n, K key) { \
+    static inline LC_UNUSED int name##_remove(name *n, K key) { \
         LC_MAP_DEBUG_NULL(n, #name "_remove"); \
         if (ksize != 0) { \
             return hashmap_remove((HashMap*)n, &key); \
@@ -264,7 +264,7 @@
     } \
     \
     /** @brief Remove a specific key-value pair (both must match) */ \
-    static inline int name##_remove_entry(name *n, K key, V val) { \
+    static inline LC_UNUSED int name##_remove_entry(name *n, K key, V val) { \
         LC_MAP_DEBUG_NULL(n, #name "_remove_entry"); \
         if (ksize != 0 && vsize != 0) { \
             return hashmap_remove_entry((HashMap*)n, &key, &val); \
@@ -284,7 +284,7 @@
     } \
     \
     /** @brief Get a value by key (panics if key not exist) */ \
-    static inline V name##_get(const name *n, K key) { \
+    static inline LC_UNUSED V name##_get(const name *n, K key) { \
         LC_MAP_DEBUG_NULL(n, #name "_get"); \
         if (ksize != 0) { \
             return *(V*)hashmap_get_mut((HashMap*)n, &key); \
@@ -295,7 +295,7 @@
     } \
     \
     /** @brief Get a value by key with a default fallback */ \
-    static inline V name##_get_or_default(const name *n, K key, V default_val) { \
+    static inline LC_UNUSED V name##_get_or_default(const name *n, K key, V default_val) { \
         LC_MAP_DEBUG_NULL(n, #name "_get_or_default"); \
         if (ksize != 0) { \
             return *(V*)hashmap_get_mut_or_default((HashMap*)n, &key, &default_val); \
@@ -307,7 +307,7 @@
     } \
     \
     /** @brief Get a mutable pointer to a value by key (returns NULL if not found) */ \
-    static inline V* name##_get_mut(name *n, K key) { \
+    static inline LC_UNUSED V* name##_get_mut(name *n, K key) { \
         LC_MAP_DEBUG_NULL(n, #name "_get_mut"); \
         if (ksize != 0) { \
             return (V*)hashmap_get_mut((HashMap*)n, &key); \
@@ -318,7 +318,7 @@
     } \
     \
     /** @brief Check if a key exists in the hash map */ \
-    static inline bool name##_contains(const name *n, K key) { \
+    static inline LC_UNUSED bool name##_contains(const name *n, K key) { \
         LC_MAP_DEBUG_NULL(n, #name "_contains"); \
         if (ksize != 0) { \
             return hashmap_contains((HashMap*)n, &key); \
@@ -329,7 +329,7 @@
     } \
     \
     /** @brief Check if a specific key-value pair exists */ \
-    static inline bool name##_contains_entry(const name *n, K key, V val) { \
+    static inline LC_UNUSED bool name##_contains_entry(const name *n, K key, V val) { \
         LC_MAP_DEBUG_NULL(n, #name "_contains_entry"); \
         if (ksize != 0 && vsize != 0) { \
             return hashmap_contains_entry((HashMap*)n, &key, &val); \
@@ -349,7 +349,7 @@
     } \
     \
     /** @brief Merge another hash map into this one (in-place) */ \
-    static inline int name##_merge(name *dst, const name *src) { \
+    static inline LC_UNUSED int name##_merge(name *dst, const name *src) { \
         LC_MAP_DEBUG_NULL_PAIR(dst, src, #name "_merge"); \
         return hashmap_merge((HashMap*)dst, (HashMap*)src); \
     } \
@@ -357,41 +357,41 @@
     /* ===== Queries ===== */ \
     \
     /** @brief Get the number of key-value pairs in the hash map */ \
-    static inline size_t name##_len(const name *n) { \
+    static inline LC_UNUSED size_t name##_len(const name *n) { \
         return n ? hashmap_len((HashMap*)n) : 0; \
     } \
     \
     /** @brief Get the current bucket count of the hash map */ \
-    static inline size_t name##_capacity(const name *n) { \
+    static inline LC_UNUSED size_t name##_capacity(const name *n) { \
         return n ? hashmap_capacity((HashMap*)n) : 0; \
     } \
     \
     /** @brief Check if the hash map is empty */ \
-    static inline bool name##_is_empty(const name *n) { \
+    static inline LC_UNUSED bool name##_is_empty(const name *n) { \
         return n ? hashmap_is_empty((HashMap*)n) : true; \
     } \
     \
     /** @brief Compute a hash of the hash map's contents */ \
-    static inline size_t name##_hash(const name *n) { \
+    static inline LC_UNUSED size_t name##_hash(const name *n) { \
         return n ? hashmap_hash((HashMap*)n) : 0; \
     } \
     \
     /* ===== Modification ===== */ \
     \
     /** @brief Remove all key-value pairs from the hash map */ \
-    static inline void name##_clear(name *n) { \
+    static inline LC_UNUSED void name##_clear(name *n) { \
         LC_MAP_DEBUG_NULL(n, #name "_clear"); \
         hashmap_clear((HashMap*)n); \
     } \
     \
     /** @brief Reserve capacity for expected number of elements */ \
-    static inline int name##_reserve(name *n, size_t expected) { \
+    static inline LC_UNUSED int name##_reserve(name *n, size_t expected) { \
         LC_MAP_DEBUG_NULL(n, #name "_reserve"); \
         return hashmap_reserve((HashMap*)n, expected); \
     } \
     \
     /** @brief Shrink bucket count to fit current load factor */ \
-    static inline int name##_shrink_to_fit(name *n) { \
+    static inline LC_UNUSED int name##_shrink_to_fit(name *n) { \
         LC_MAP_DEBUG_NULL(n, #name "_shrink_to_fit"); \
         return hashmap_shrink_to_fit((HashMap*)n); \
     } \
@@ -399,13 +399,13 @@
     /* ===== Configuration ===== */ \
     \
     /** @brief Set the key hash function (empty map only) */ \
-    static inline int name##_set_hasher(name *n, lc_Hasher hasher) { \
+    static inline LC_UNUSED int name##_set_hasher(name *n, lc_Hasher hasher) { \
         LC_MAP_DEBUG_NULL(n, #name "_set_hasher"); \
         return hashmap_set_hasher((HashMap*)n, hasher); \
     } \
     \
     /** @brief Set key and value comparators (empty map only) */ \
-    static inline int name##_set_comparator(name *n, lc_Comparator kcmp, lc_Comparator vcmp) { \
+    static inline LC_UNUSED int name##_set_comparator(name *n, lc_Comparator kcmp, lc_Comparator vcmp) { \
         LC_MAP_DEBUG_NULL(n, #name "_set_comparator"); \
         return hashmap_set_comparator((HashMap*)n, kcmp, vcmp); \
     } \
@@ -413,19 +413,19 @@
     /* ===== Copy & Comparison ===== */ \
     \
     /** @brief Create a deep copy of the hash map */ \
-    static inline name* name##_clone(const name *n) { \
+    static inline LC_UNUSED name* name##_clone(const name *n) { \
         LC_MAP_DEBUG_NULL(n, #name "_clone"); \
         return (name*)hashmap_clone((HashMap*)n); \
     } \
     \
     /** @brief Check if two hash maps are equal */ \
-    static inline bool name##_equals(const name *a, const name *b) { \
+    static inline LC_UNUSED bool name##_equals(const name *a, const name *b) { \
         LC_MAP_DEBUG_NULL_PAIR(a, b, #name "_equals"); \
         return hashmap_equals((HashMap*)a, (HashMap*)b); \
     } \
     \
     /** @brief Swap contents of two typed hash maps */ \
-    static inline void name##_swap(name *a, name *b) { \
+    static inline LC_UNUSED void name##_swap(name *a, name *b) { \
         LC_MAP_DEBUG_NULL_PAIR(a, b, #name "_swap"); \
         name tmp = *a; \
         *a = *b; \
@@ -435,31 +435,31 @@
     /* ===== Export & Iteration ===== */ \
     \
     /** @brief Export all keys to a flat Array snapshot */ \
-    static inline Array *name##_keys(const name *n) { \
+    static inline LC_UNUSED Array *name##_keys(const name *n) { \
         LC_MAP_DEBUG_NULL(n, #name "_keys"); \
         return hashmap_keys((HashMap*)n); \
     } \
     \
     /** @brief Export all values to a flat Array snapshot */ \
-    static inline Array *name##_values(const name *n) { \
+    static inline LC_UNUSED Array *name##_values(const name *n) { \
         LC_MAP_DEBUG_NULL(n, #name "_values"); \
         return hashmap_values((HashMap*)n); \
     } \
     \
     /** @brief Get the key from a raw hash map entry pointer */ \
-    static inline K name##_entry_key(const name *n, const void *entry_ptr) { \
+    static inline LC_UNUSED K name##_entry_key(const name *n, const void *entry_ptr) { \
         LC_MAP_DEBUG_NULL_ENTRY(n, entry_ptr, #name "_entry_key"); \
         return *(K*)hashmap_entry_key_mut((HashMap*)n, entry_ptr); \
     } \
     \
     /** @brief Get the value from a raw hash map entry pointer */ \
-    static inline V name##_entry_value(const name *n, const void *entry_ptr) { \
+    static inline LC_UNUSED V name##_entry_value(const name *n, const void *entry_ptr) { \
         LC_MAP_DEBUG_NULL_ENTRY(n, entry_ptr, #name "_entry_value"); \
         return *(V*)hashmap_entry_value_mut((HashMap*)n, entry_ptr); \
     } \
     \
     /** @brief Create a forward iterator over the hash map */ \
-    static inline Iterator name##_iter(const name *n) { \
+    static inline LC_UNUSED Iterator name##_iter(const name *n) { \
         LC_MAP_DEBUG_NULL(n, #name "_iter"); \
         return hashmap_iter((HashMap*)n); \
     }

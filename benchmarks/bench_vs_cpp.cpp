@@ -629,7 +629,7 @@ int main() {
     }
 
     std::cout << "| TOTAL WINS               |          |           |           | C " 
-          << std::setw(2) << c_count << "     | C++ " << std::setw(2) << cpp_count << "    |\n";
+         << std::setw(2) << c_count << "     | C++ " << std::setw(2) << cpp_count << "     |\n";
     std::cout << "+--------------------------+----------+-----------+-----------+----------+------------+\n";
 
     std::cout << "\n";

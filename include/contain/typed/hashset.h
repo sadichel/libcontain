@@ -35,7 +35,7 @@
  *   }
  * @endcode
  *
- * @warning The macro generates static inline functions. Include this header
+ * @warning The macro generates static inline LC_UNUSED functions. Include this header
  *          in exactly the same way as hashset.h — no special implementation
  *          define is needed.
  */
@@ -155,44 +155,44 @@
     /* ===== Creation & Destruction ===== */ \
     \
     /** @brief Create a new empty typed hash set */ \
-    static inline name* name##_create(void) { \
+    static inline LC_UNUSED name* name##_create(void) { \
         return (name*)hashset_create(size); \
     } \
     \
     /** @brief Create a new typed hash set with specified initial bucket count */ \
-    static inline name* name##_create_with_capacity(size_t cap) { \
+    static inline LC_UNUSED name* name##_create_with_capacity(size_t cap) { \
         return (name*)hashset_create_with_capacity(size, cap); \
     } \
     \
     /** @brief Create a new typed hash set with a custom hash function */ \
-    static inline name* name##_create_with_hasher(lc_Hasher hasher) { \
+    static inline LC_UNUSED name* name##_create_with_hasher(lc_Hasher hasher) { \
         return (name*)hashset_create_with_hasher(size, hasher); \
     } \
     \
     /** @brief Create a new typed hash set with a custom comparator */ \
-    static inline name* name##_create_with_comparator(lc_Comparator cmp) { \
+    static inline LC_UNUSED name* name##_create_with_comparator(lc_Comparator cmp) { \
         return (name*)hashset_create_with_comparator(size, cmp); \
     } \
     \
     /** @brief Create a new typed hash set with aligned elements */ \
-    static inline name* name##_create_aligned(size_t align) { \
+    static inline LC_UNUSED name* name##_create_aligned(size_t align) { \
         return (name*)hashset_create_aligned(size, align); \
     } \
     \
     /** @brief Destroy a typed hash set and free all resources */ \
-    static inline void name##_destroy(name *n) { \
+    static inline LC_UNUSED void name##_destroy(name *n) { \
         hashset_destroy((HashSet*)n); \
     } \
     \
     /* ===== Container Access ===== */ \
     \
     /** @brief Get the underlying generic HashSet pointer (zero-cost cast) */ \
-    static inline HashSet *name##_unwrap(name *n) { \
+    static inline LC_UNUSED HashSet *name##_unwrap(name *n) { \
         return (HashSet*)n; \
     } \
     \
     /** @brief Get the underlying generic HashSet pointer (const, zero-cost cast) */ \
-    static inline const HashSet *name##_unwrap_const(const name *n) { \
+    static inline LC_UNUSED const HashSet *name##_unwrap_const(const name *n) { \
         return (const HashSet*)n; \
     } \
     \
@@ -202,13 +202,13 @@
      * After calling wrap, do NOT destroy the original container. \
      * Use name##_destroy() to free both. \
      */ \
-    static inline name* name##_wrap(Container *c) { \
+    static inline LC_UNUSED name* name##_wrap(Container *c) { \
         LC_SET_DEBUG_NULL(c, #name "_wrap"); \
         return (name*)c; \
     } \
     \
     /** @brief Create a new empty hash set of the same type */ \
-    static inline name* name##_instance(const name *n) { \
+    static inline LC_UNUSED name* name##_instance(const name *n) { \
         LC_SET_DEBUG_NULL(n, #name "_instance"); \
         return (name*)hashset_instance((HashSet*)n); \
     } \
@@ -216,7 +216,7 @@
     /* ===== Core Operations ===== */ \
     \
     /** @brief Insert an element into the hash set */ \
-    static inline int name##_insert(name *n, T val) { \
+    static inline LC_UNUSED int name##_insert(name *n, T val) { \
         LC_SET_DEBUG_NULL(n, #name "_insert"); \
         if (size == 0) { \
             void *ptr; \
@@ -227,7 +227,7 @@
     } \
     \
     /** @brief Remove an element from the hash set */ \
-    static inline int name##_remove(name *n, T val) { \
+    static inline LC_UNUSED int name##_remove(name *n, T val) { \
         LC_SET_DEBUG_NULL(n, #name "_remove"); \
         if (size == 0) { \
             void *ptr; \
@@ -238,7 +238,7 @@
     } \
     \
     /** @brief Check if an element exists in the hash set */ \
-    static inline bool name##_contains(const name *n, T val) { \
+    static inline LC_UNUSED bool name##_contains(const name *n, T val) { \
         LC_SET_DEBUG_NULL(n, #name "_contains"); \
         if (size == 0) { \
             void *ptr; \
@@ -249,7 +249,7 @@
     } \
     \
     /** @brief Merge another hash set into this one (in-place union) */ \
-    static inline int name##_merge(name *dst, const name *src) { \
+    static inline LC_UNUSED int name##_merge(name *dst, const name *src) { \
         LC_SET_DEBUG_NULL_PAIR(dst, src, #name "_merge"); \
         return hashset_merge((HashSet*)dst, (HashSet*)src); \
     } \
@@ -257,41 +257,41 @@
     /* ===== Queries ===== */ \
     \
     /** @brief Get the number of elements in the hash set */ \
-    static inline size_t name##_len(const name *n) { \
+    static inline LC_UNUSED size_t name##_len(const name *n) { \
         return n ? hashset_len((HashSet*)n) : 0; \
     } \
     \
     /** @brief Get the current bucket count of the hash set */ \
-    static inline size_t name##_capacity(const name *n) { \
+    static inline LC_UNUSED size_t name##_capacity(const name *n) { \
         return n ? hashset_capacity((HashSet*)n) : 0; \
     } \
     \
     /** @brief Check if the hash set is empty */ \
-    static inline bool name##_is_empty(const name *n) { \
+    static inline LC_UNUSED bool name##_is_empty(const name *n) { \
         return n ? hashset_is_empty((HashSet*)n) : true; \
     } \
     \
     /** @brief Compute a hash of the hash set's contents */ \
-    static inline size_t name##_hash(const name *n) { \
+    static inline LC_UNUSED size_t name##_hash(const name *n) { \
         return n ? hashset_hash((HashSet*)n) : 0; \
     } \
     \
     /* ===== Modification ===== */ \
     \
     /** @brief Remove all elements from the hash set */ \
-    static inline void name##_clear(name *n) { \
+    static inline LC_UNUSED void name##_clear(name *n) { \
         LC_SET_DEBUG_NULL(n, #name "_clear"); \
         hashset_clear((HashSet*)n); \
     } \
     \
     /** @brief Reserve capacity for expected number of elements */ \
-    static inline int name##_reserve(name *n, size_t expected) { \
+    static inline LC_UNUSED int name##_reserve(name *n, size_t expected) { \
         LC_SET_DEBUG_NULL(n, #name "_reserve"); \
         return hashset_reserve((HashSet*)n, expected); \
     } \
     \
     /** @brief Shrink bucket count to fit current load factor */ \
-    static inline int name##_shrink_to_fit(name *n) { \
+    static inline LC_UNUSED int name##_shrink_to_fit(name *n) { \
         LC_SET_DEBUG_NULL(n, #name "_shrink_to_fit"); \
         return hashset_shrink_to_fit((HashSet*)n); \
     } \
@@ -299,13 +299,13 @@
     /* ===== Configuration ===== */ \
     \
     /** @brief Set the hash function for the hash set (empty set only) */ \
-    static inline int name##_set_hasher(name *n, lc_Hasher hasher) { \
+    static inline LC_UNUSED int name##_set_hasher(name *n, lc_Hasher hasher) { \
         LC_SET_DEBUG_NULL(n, #name "_set_hasher"); \
         return hashset_set_hasher((HashSet*)n, hasher); \
     } \
     \
     /** @brief Set the comparator for the hash set (empty set only) */ \
-    static inline int name##_set_comparator(name *n, lc_Comparator cmp) { \
+    static inline LC_UNUSED int name##_set_comparator(name *n, lc_Comparator cmp) { \
         LC_SET_DEBUG_NULL(n, #name "_set_comparator"); \
         return hashset_set_comparator((HashSet*)n, cmp); \
     } \
@@ -313,25 +313,25 @@
     /* ===== Set Operations ===== */ \
     \
     /** @brief Create a deep copy of the hash set */ \
-    static inline name* name##_clone(const name *n) { \
+    static inline LC_UNUSED name* name##_clone(const name *n) { \
         LC_SET_DEBUG_NULL(n, #name "_clone"); \
         return (name*)hashset_clone((HashSet*)n); \
     } \
     \
     /** @brief Create a new hash set containing the union of two sets */ \
-    static inline name* name##_union(const name *a, const name *b) { \
+    static inline LC_UNUSED name* name##_union(const name *a, const name *b) { \
         LC_SET_DEBUG_NULL_PAIR(a, b, #name "_union"); \
         return (name*)hashset_union((HashSet*)a, (HashSet*)b); \
     } \
     \
     /** @brief Create a new hash set containing the intersection of two sets */ \
-    static inline name* name##_intersection(const name *a, const name *b) { \
+    static inline LC_UNUSED name* name##_intersection(const name *a, const name *b) { \
         LC_SET_DEBUG_NULL_PAIR(a, b, #name "_intersection"); \
         return (name*)hashset_intersection((HashSet*)a, (HashSet*)b); \
     } \
     \
     /** @brief Create a new hash set containing the difference of two sets (A \ B) */ \
-    static inline name* name##_difference(const name *a, const name *b) { \
+    static inline LC_UNUSED name* name##_difference(const name *a, const name *b) { \
         LC_SET_DEBUG_NULL_PAIR(a, b, #name "_difference"); \
         return (name*)hashset_difference((HashSet*)a, (HashSet*)b); \
     } \
@@ -339,13 +339,13 @@
     /* ===== Set Comparisons ===== */ \
     \
     /** @brief Check if A is a subset of B */ \
-    static inline bool name##_subset(const name *a, const name *b) { \
+    static inline LC_UNUSED bool name##_subset(const name *a, const name *b) { \
         LC_SET_DEBUG_NULL_PAIR(a, b, #name "_subset"); \
         return hashset_subset((HashSet*)a, (HashSet*)b); \
     } \
     \
     /** @brief Check if two hash sets are equal */ \
-    static inline bool name##_equals(const name *a, const name *b) { \
+    static inline LC_UNUSED bool name##_equals(const name *a, const name *b) { \
         LC_SET_DEBUG_NULL_PAIR(a, b, #name "_equals"); \
         return hashset_equals((HashSet*)a, (HashSet*)b); \
     } \
@@ -353,19 +353,19 @@
     /* ===== Export & Iteration ===== */ \
     \
     /** @brief Export the hash set to a flat Array snapshot */ \
-    static inline Array *name##_to_array(const name *n) { \
+    static inline LC_UNUSED Array *name##_to_array(const name *n) { \
         LC_SET_DEBUG_NULL(n, #name "_to_array"); \
         return hashset_to_array((HashSet*)n); \
     } \
     \
     /** @brief Create a forward iterator over the hash set */ \
-    static inline Iterator name##_iter(const name *n) { \
+    static inline LC_UNUSED Iterator name##_iter(const name *n) { \
         LC_SET_DEBUG_NULL(n, #name "_iter"); \
         return hashset_iter((HashSet*)n); \
     } \
     \
     /** @brief Swap contents of two typed hash sets */ \
-    static inline void name##_swap(name *a, name *b) { \
+    static inline LC_UNUSED void name##_swap(name *a, name *b) { \
         LC_SET_DEBUG_NULL_PAIR(a, b, #name "_swap"); \
         name tmp = *a; \
         *a = *b; \

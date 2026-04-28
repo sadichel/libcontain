@@ -41,11 +41,11 @@ static int cmp_str_ptr(const void *a, const void *b) {
 
 /* Alignment test types */
 typedef struct {
-    alignas(32) uint8_t data[32];
+    uint8_t data[32];
 } Aligned32;
 
 typedef struct {
-    alignas(64) uint8_t data[64];
+    uint8_t data[64];
 } Aligned64;
 
 /* Force circular buffer wrap */
@@ -1134,7 +1134,7 @@ int test_deque_large_push(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
         int val = (int)i;
-        ASSERT_EQUAL(deque_push_back(deq, &val), LC_OK, "push failed at %zu", i);
+        ASSERT_EQUAL_FMT(deque_push_back(deq, &val), LC_OK, "push failed at %zu", i);
     }
     double push_time = timer_elapsed(&t);
     printf("    Push %zu elements: %.3f ms\n", N, push_time * 1000);
@@ -1143,7 +1143,7 @@ int test_deque_large_push(void) {
 
     t = timer_start();
     for (size_t i = 0; i < N; i++) {
-        ASSERT_EQUAL(*(int *)deque_at(deq, i), (int)i, "wrong value at %zu", i);
+        ASSERT_EQUAL_FMT(*(int *)deque_at(deq, i), (int)i, "wrong value at %zu", i);
     }
     double access_time = timer_elapsed(&t);
     printf("    Access %zu elements: %.3f ms\n", N, access_time * 1000);
@@ -1189,7 +1189,7 @@ int test_deque_large_clone(void) {
     ASSERT_EQUAL(deque_len(clone), N, "clone wrong length");
 
     for (size_t i = 0; i < N; i++) {
-        ASSERT_EQUAL(*(int *)deque_at(clone, i), (int)i, "clone wrong value at %zu", i);
+        ASSERT_EQUAL_FMT(*(int *)deque_at(clone, i), (int)i, "clone wrong value at %zu", i);
     }
 
     deque_destroy(deq);
@@ -1205,7 +1205,7 @@ int test_deque_large_strings(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
         snprintf(buf, sizeof(buf), "string_%zu", i);
-        ASSERT_EQUAL(deque_push_back(deq, buf), LC_OK, "push string failed at %zu", i);
+        ASSERT_EQUAL_FMT(deque_push_back(deq, buf), LC_OK, "push string failed at %zu", i);
     }
     double push_time = timer_elapsed(&t);
     printf("    Push %zu strings: %.3f ms\n", N, push_time * 1000);
@@ -1214,7 +1214,7 @@ int test_deque_large_strings(void) {
     for (size_t i = 0; i < N; i++) {
         char *s = (char *)deque_at(deq, i);
         snprintf(buf, sizeof(buf), "string_%zu", i);
-        ASSERT_STR_EQUAL(s, buf, "wrong string at %zu", i);
+        ASSERT_STR_EQUAL_FMT(s, buf, "wrong string at %zu", i);
     }
     double access_time = timer_elapsed(&t);
     printf("    Access %zu strings: %.3f ms\n", N, access_time * 1000);

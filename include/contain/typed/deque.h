@@ -34,7 +34,7 @@
  *   }
  * @endcode
  *
- * @warning The macro generates static inline functions. Include this header
+ * @warning The macro generates static inline LC_UNUSED functions. Include this header
  *          in exactly the same way as deque.h — no special implementation
  *          define is needed.
  */
@@ -174,39 +174,39 @@
     /* ===== Creation & Destruction ===== */ \
     \
     /** @brief Create a new empty typed deque */ \
-    static inline name* name##_create(void) { \
+    static inline LC_UNUSED name* name##_create(void) { \
         return (name*)deque_create(size); \
     } \
     \
     /** @brief Create a new typed deque with specified initial capacity */ \
-    static inline name* name##_create_with_capacity(size_t cap) { \
+    static inline LC_UNUSED name* name##_create_with_capacity(size_t cap) { \
         return (name*)deque_create_with_capacity(size, cap); \
     } \
     \
     /** @brief Create a new typed deque with a custom comparator */ \
-    static inline name* name##_create_with_comparator(lc_Comparator cmp) { \
+    static inline LC_UNUSED name* name##_create_with_comparator(lc_Comparator cmp) { \
         return (name*)deque_create_with_comparator(size, cmp); \
     } \
     \
     /** @brief Create a new typed deque with aligned elements */ \
-    static inline name* name##_create_aligned(size_t align) { \
+    static inline LC_UNUSED name* name##_create_aligned(size_t align) { \
         return (name*)deque_create_aligned(size, align); \
     } \
     \
     /** @brief Destroy a typed deque and free all resources */ \
-    static inline void name##_destroy(name *n) { \
+    static inline LC_UNUSED void name##_destroy(name *n) { \
         deque_destroy((Deque*)n); \
     } \
     \
     /* ===== Container Access ===== */ \
     \
     /** @brief Get the underlying generic Deque pointer (zero-cost cast) */ \
-    static inline Deque *name##_unwrap(name *n) { \
+    static inline LC_UNUSED Deque *name##_unwrap(name *n) { \
         return (Deque*)n; \
     } \
     \
     /** @brief Get the underlying generic Deque pointer (const, zero-cost cast) */ \
-    static inline const Deque *name##_unwrap_const(const name *n) { \
+    static inline LC_UNUSED const Deque *name##_unwrap_const(const name *n) { \
         return (const Deque*)n; \
     } \
     \
@@ -216,7 +216,7 @@
      * After calling wrap, do NOT destroy the original container. \
      * Use name##_destroy() to free both. \
      */ \
-    static inline name* name##_wrap(Container *c) { \
+    static inline LC_UNUSED name* name##_wrap(Container *c) { \
         LC_DEQ_DEBUG_NULL(c, #name "_wrap"); \
         return (name*)c; \
     } \
@@ -224,22 +224,22 @@
     /* ===== Queries ===== */ \
     \
     /** @brief Get the number of elements in the deque */ \
-    static inline size_t name##_len(const name *n) { \
+    static inline LC_UNUSED size_t name##_len(const name *n) { \
         return n ? deque_len((Deque*)n) : 0; \
     } \
     \
     /** @brief Get the current capacity of the deque */ \
-    static inline size_t name##_capacity(const name *n) { \
+    static inline LC_UNUSED size_t name##_capacity(const name *n) { \
         return n ? deque_capacity((Deque*)n) : 0; \
     } \
     \
     /** @brief Check if the deque is empty */ \
-    static inline bool name##_is_empty(const name *n) { \
+    static inline LC_UNUSED bool name##_is_empty(const name *n) { \
         return n ? deque_is_empty((Deque*)n) : true; \
     } \
     \
     /** @brief Find the first occurrence of an element */ \
-    static inline size_t name##_find(const name *n, T val) { \
+    static inline LC_UNUSED size_t name##_find(const name *n, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_find"); \
         if (size == 0) { \
             void *ptr; \
@@ -250,7 +250,7 @@
     } \
     \
     /** @brief Find the last occurrence of an element */ \
-    static inline size_t name##_rfind(const name *n, T val) { \
+    static inline LC_UNUSED size_t name##_rfind(const name *n, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_rfind"); \
         if (size == 0) { \
             void *ptr; \
@@ -261,14 +261,14 @@
     } \
     \
     /** @brief Check if an element exists in the deque */ \
-    static inline bool name##_contains(const name *n, T val) { \
+    static inline LC_UNUSED bool name##_contains(const name *n, T val) { \
         return name##_find(n, val) != DEQ_NPOS; \
     } \
     \
     /* ===== Insertion ===== */ \
     \
     /** @brief Append an element to the back of the deque */ \
-    static inline int name##_push_back(name *n, T val) { \
+    static inline LC_UNUSED int name##_push_back(name *n, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_push_back"); \
         Deque *_d = (Deque*)n; \
         size_t _len = _d->container.len; \
@@ -287,7 +287,7 @@
         return deque_push_back(_d, &val); \
     } \
     /** @brief Prepend an element to the front of the deque */ \
-    static inline int name##_push_front(name *n, T val) { \
+    static inline LC_UNUSED int name##_push_front(name *n, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_push_front"); \
         Deque *_d = (Deque*)n; \
         size_t _len = _d->container.len; \
@@ -308,7 +308,7 @@
     } \
     \
     /** @brief Insert an element at the specified position */ \
-    static inline int name##_insert(name *n, size_t pos, T val) { \
+    static inline LC_UNUSED int name##_insert(name *n, size_t pos, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_insert"); \
         if (size == 0) { \
             void *ptr; \
@@ -319,28 +319,28 @@
     } \
     \
     /** @brief Insert a range of elements from another deque */ \
-    static inline int name##_insert_range(name *dst, size_t pos, const name *src, size_t from, size_t to) { \
+    static inline LC_UNUSED int name##_insert_range(name *dst, size_t pos, const name *src, size_t from, size_t to) { \
         LC_DEQ_DEBUG_NULL(dst, #name "_insert_range"); \
         LC_DEQ_DEBUG_NULL(src, #name "_insert_range"); \
         return deque_insert_range((Deque*)dst, pos, (Deque*)src, from, to); \
     } \
     \
     /** @brief Append all elements from another deque */ \
-    static inline int name##_append(name *dst, const name *src) { \
+    static inline LC_UNUSED int name##_append(name *dst, const name *src) { \
         LC_DEQ_DEBUG_NULL(dst, #name "_append"); \
         LC_DEQ_DEBUG_NULL(src, #name "_append"); \
         return name##_insert_range(dst, name##_len(dst), src, 0, name##_len(src)); \
     } \
     \
     /** @brief Try to push to back if capacity permits (no allocation) */ \
-    static inline bool name##_try_push_back(name *n, T val) { \
+    static inline LC_UNUSED bool name##_try_push_back(name *n, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_try_push_back"); \
         if (deque_len((Deque*)n) >= deque_capacity((Deque*)n)) return false; \
         return name##_push_back(n, val) == LC_OK; \
     } \
     \
     /** @brief Try to push to front if capacity permits (no allocation) */ \
-    static inline bool name##_try_push_front(name *n, T val) { \
+    static inline LC_UNUSED bool name##_try_push_front(name *n, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_try_push_front"); \
         if (deque_len((Deque*)n) >= deque_capacity((Deque*)n)) return false; \
         return name##_push_front(n, val) == LC_OK; \
@@ -349,7 +349,7 @@
     /* ===== Access & Modification ===== */ \
     \
     /** @brief Set an element at the specified position */ \
-    static inline int name##_set(name *n, size_t idx, T val) { \
+    static inline LC_UNUSED int name##_set(name *n, size_t idx, T val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_set"); \
         LC_DEQ_DEBUG_BOUNDS(n, idx, #name "_set"); \
         if (size == 0) { \
@@ -361,7 +361,7 @@
     } \
     \
     /** @brief Get an element at the specified position (panics if out of bounds) */ \
-    static inline T name##_at(const name *n, size_t idx) { \
+    static inline LC_UNUSED T name##_at(const name *n, size_t idx) { \
         LC_DEQ_DEBUG_NULL(n, #name "_at"); \
         LC_DEQ_DEBUG_BOUNDS(n, idx, #name "_at"); \
         Deque *_d = (Deque*)n; \
@@ -370,7 +370,7 @@
     } \
     \
     /** @brief Get an element or return default if out of bounds */ \
-    static inline T name##_at_or_default(const name *n, size_t idx, T default_val) { \
+    static inline LC_UNUSED T name##_at_or_default(const name *n, size_t idx, T default_val) { \
         LC_DEQ_DEBUG_NULL(n, #name "_at_or_default"); \
         if (idx >= deque_len((Deque*)n)) return default_val; \
         void *slot = deque_at_mut((Deque*)n, idx); \
@@ -378,14 +378,14 @@
     } \
     \
     /** @brief Get the first element (panics if empty) */ \
-    static inline T name##_front(const name *n) { \
+    static inline LC_UNUSED T name##_front(const name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_front"); \
         LC_DEQ_DEBUG_EMPTY(n, #name "_front"); \
         return ((T*)((Deque*)n)->container.items)[((Deque*)n)->head]; \
     } \
     \
     /** @brief Get the last element (panics if empty) */ \
-    static inline T name##_back(const name *n) { \
+    static inline LC_UNUSED T name##_back(const name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_back"); \
         LC_DEQ_DEBUG_EMPTY(n, #name "_back"); \
         Deque *_d = (Deque*)n; \
@@ -393,7 +393,7 @@
         return ((T*)_d->container.items)[_tail]; \
     } \
     /** @brief Get pointer to element (NULL if out of bounds) */ \
-    static inline T* name##_get_ptr(name *n, size_t idx) { \
+    static inline LC_UNUSED T* name##_get_ptr(name *n, size_t idx) { \
         LC_DEQ_DEBUG_NULL(n, #name "_get_ptr"); \
         if (idx >= deque_len((Deque*)n)) return NULL; \
         return (T*)deque_at_mut((Deque*)n, idx); \
@@ -402,25 +402,25 @@
     /* ===== Removal ===== */ \
     \
     /** @brief Remove and return the last element */ \
-    static inline int name##_pop_back(name *n) { \
+    static inline LC_UNUSED int name##_pop_back(name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_pop_back"); \
         return deque_pop_back((Deque*)n); \
     } \
     \
     /** @brief Remove and return the first element */ \
-    static inline int name##_pop_front(name *n) { \
+    static inline LC_UNUSED int name##_pop_front(name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_pop_front"); \
         return deque_pop_front((Deque*)n); \
     } \
     \
     /** @brief Remove an element at the specified position */ \
-    static inline int name##_remove(name *n, size_t idx) { \
+    static inline LC_UNUSED int name##_remove(name *n, size_t idx) { \
         LC_DEQ_DEBUG_NULL(n, #name "_remove"); \
         return deque_remove((Deque*)n, idx); \
     } \
     \
     /** @brief Remove all elements from the deque */ \
-    static inline void name##_clear(name *n) { \
+    static inline LC_UNUSED void name##_clear(name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_clear"); \
         deque_clear((Deque*)n); \
     } \
@@ -428,19 +428,19 @@
     /* ===== Capacity Management ===== */ \
     \
     /** @brief Set the comparator for the deque */ \
-    static inline int name##_set_comparator(name *n, lc_Comparator cmp) { \
+    static inline LC_UNUSED int name##_set_comparator(name *n, lc_Comparator cmp) { \
         LC_DEQ_DEBUG_NULL(n, #name "_set_comparator"); \
         return deque_set_comparator((Deque*)n, cmp); \
     } \
     \
     /** @brief Reserve capacity for expected number of elements */ \
-    static inline int name##_reserve(name *n, size_t expected_capacity) { \
+    static inline LC_UNUSED int name##_reserve(name *n, size_t expected_capacity) { \
         LC_DEQ_DEBUG_NULL(n, #name "_reserve"); \
         return deque_reserve((Deque*)n, expected_capacity); \
     } \
     \
     /** @brief Shrink capacity to fit current length */ \
-    static inline int name##_shrink_to_fit(name *n) { \
+    static inline LC_UNUSED int name##_shrink_to_fit(name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_shrink_to_fit"); \
         return deque_shrink_to_fit((Deque*)n); \
     } \
@@ -448,13 +448,13 @@
     /* ===== In-place Operations ===== */ \
     \
     /** @brief Reverse the deque in place */ \
-    static inline void name##_reverse_inplace(name *n) { \
+    static inline LC_UNUSED void name##_reverse_inplace(name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_reverse_inplace"); \
         deque_reverse_inplace((Deque*)n); \
     } \
     \
     /** @brief Sort the deque in place */ \
-    static inline int name##_sort(name *n, lc_Comparator cmp) { \
+    static inline LC_UNUSED int name##_sort(name *n, lc_Comparator cmp) { \
         LC_DEQ_DEBUG_NULL(n, #name "_sort"); \
         return deque_sort((Deque*)n, cmp); \
     } \
@@ -462,31 +462,31 @@
     /* ===== Copy & View ===== */ \
     \
     /** @brief Create a new deque with elements in reverse order */ \
-    static inline name* name##_reverse(const name *n) { \
+    static inline LC_UNUSED name* name##_reverse(const name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_reverse"); \
         return (name*)deque_reverse((Deque*)n); \
     } \
     \
     /** @brief Create a deep copy of the deque */ \
-    static inline name* name##_clone(const name *n) { \
+    static inline LC_UNUSED name* name##_clone(const name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_clone"); \
         return (name*)deque_clone((Deque*)n); \
     } \
     \
     /** @brief Extract a slice of the deque as a new deque */ \
-    static inline name* name##_slice(const name *n, size_t from, size_t to) { \
+    static inline LC_UNUSED name* name##_slice(const name *n, size_t from, size_t to) { \
         LC_DEQ_DEBUG_NULL(n, #name "_slice"); \
         return (name*)deque_slice((Deque*)n, from, to); \
     } \
     \
     /** @brief Create a new empty deque of the same type */ \
-    static inline name* name##_instance(const name *n) { \
+    static inline LC_UNUSED name* name##_instance(const name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_instance"); \
         return (name*)deque_instance((Deque*)n); \
     } \
     \
     /** @brief Swap contents of two typed deques */ \
-    static inline void name##_swap(name *a, name *b) { \
+    static inline LC_UNUSED void name##_swap(name *a, name *b) { \
         LC_DEQ_DEBUG_NULL(a, #name "_swap"); \
         LC_DEQ_DEBUG_NULL(b, #name "_swap"); \
         name tmp = *a; \
@@ -497,13 +497,13 @@
     /* ===== Iteration ===== */ \
     \
     /** @brief Create a forward iterator over the deque */ \
-    static inline Iterator name##_iter(const name *n) { \
+    static inline LC_UNUSED Iterator name##_iter(const name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_iter"); \
         return deque_iter((Deque*)n); \
     } \
     \
     /** @brief Create a reverse iterator over the deque */ \
-    static inline Iterator name##_iter_reversed(const name *n) { \
+    static inline LC_UNUSED Iterator name##_iter_reversed(const name *n) { \
         LC_DEQ_DEBUG_NULL(n, #name "_iter_reversed"); \
         return deque_iter_reversed((Deque*)n); \
     }

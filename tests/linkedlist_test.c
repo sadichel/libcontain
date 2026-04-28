@@ -42,11 +42,11 @@ static int cmp_str_ptr(const void *a, const void *b) {
 
 /* Alignment test types */
 typedef struct {
-    alignas(32) uint8_t data[32];
+    uint8_t data[32];
 } Aligned32;
 
 typedef struct {
-    alignas(64) uint8_t data[64];
+   uint8_t data[64];
 } Aligned64;
 
 /* Fill list with ints [0, n) */
@@ -970,7 +970,7 @@ int test_linkedlist_large_push(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
         int val = (int)i;
-        ASSERT_EQUAL(linkedlist_push_back(list, &val), LC_OK, "push failed at %zu", i);
+        ASSERT_EQUAL_FMT(linkedlist_push_back(list, &val), LC_OK, "push failed at %zu", i);
     }
     double push_time = timer_elapsed(&t);
     printf("    Push %zu elements: %.3f ms\n", N, push_time * 1000);
@@ -979,7 +979,7 @@ int test_linkedlist_large_push(void) {
 
     t = timer_start();
     for (size_t i = 0; i < N; i++) {
-        ASSERT_EQUAL(*(int *)linkedlist_at(list, i), (int)i, "wrong value at %zu", i);
+        ASSERT_EQUAL_FMT(*(int *)linkedlist_at(list, i), (int)i, "wrong value at %zu", i);
     }
     double access_time = timer_elapsed(&t);
     printf("    Access %zu elements: %.3f ms\n", N, access_time * 1000);
@@ -1025,7 +1025,7 @@ int test_linkedlist_large_clone(void) {
     ASSERT_EQUAL(linkedlist_len(clone), N, "clone wrong length");
 
     for (size_t i = 0; i < N; i++) {
-        ASSERT_EQUAL(*(int *)linkedlist_at(clone, i), (int)i, "clone wrong value at %zu", i);
+        ASSERT_EQUAL_FMT(*(int *)linkedlist_at(clone, i), (int)i, "clone wrong value at %zu", i);
     }
 
     linkedlist_destroy(list);
@@ -1041,7 +1041,7 @@ int test_linkedlist_large_strings(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
         snprintf(buf, sizeof(buf), "string_%zu", i);
-        ASSERT_EQUAL(linkedlist_push_back(list, buf), LC_OK, "push string failed at %zu", i);
+        ASSERT_EQUAL_FMT(linkedlist_push_back(list, buf), LC_OK, "push string failed at %zu", i);
     }
     double push_time = timer_elapsed(&t);
     printf("    Push %zu strings: %.3f ms\n", N, push_time * 1000);
@@ -1050,7 +1050,7 @@ int test_linkedlist_large_strings(void) {
     for (size_t i = 0; i < N; i++) {
         char *s = (char *)linkedlist_at(list, i);
         snprintf(buf, sizeof(buf), "string_%zu", i);
-        ASSERT_STR_EQUAL(s, buf, "wrong string at %zu", i);
+        ASSERT_STR_EQUAL_FMT(s, buf, "wrong string at %zu", i);
     }
     double access_time = timer_elapsed(&t);
     printf("    Access %zu strings: %.3f ms\n", N, access_time * 1000);

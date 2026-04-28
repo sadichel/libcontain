@@ -12,23 +12,26 @@ VERSION = 1.0.0
 # Build directory
 BUILD_DIR = build
 
-# Compiler flags - base flags without include path or POSIX flags
-BASE_CFLAGS = -std=gnu99 -Wall -Wextra -Wpedantic -fPIC
+# POSIX extensions for strdup() and other functions
+POSIX_FLAGS = -D_POSIX_C_SOURCE=200809L
+
+# Compiler flags
+BASE_CFLAGS   = -std=gnu99 -Wall -Wextra -Wpedantic -fPIC
 BASE_CXXFLAGS = -std=gnu++11 -Wall -O2 -fPIC
 
 # Build variants
-RELEASE_CFLAGS = $(BASE_CFLAGS) -O2 -Iinclude $(POSIX_FLAGS)
-RELEASE_CXXFLAGS = $(BASE_CXXFLAGS) -O2 -Iinclude $(POSIX_FLAGS)
+RELEASE_CFLAGS    = $(BASE_CFLAGS) -O2 -Iinclude $(POSIX_FLAGS)
+RELEASE_CXXFLAGS  = $(BASE_CXXFLAGS) -O2 -Iinclude $(POSIX_FLAGS)
 
-DEBUG_CFLAGS = $(BASE_CFLAGS) -O0 -g -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
-DEBUG_CXXFLAGS = $(BASE_CXXFLAGS) -O0 -g -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
+DEBUG_CFLAGS      = $(BASE_CFLAGS) -O0 -g -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
+DEBUG_CXXFLAGS    = $(BASE_CXXFLAGS) -O0 -g -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
 
-SANITIZE_CFLAGS = $(BASE_CFLAGS) -O0 -g -fsanitize=address,undefined -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
+SANITIZE_CFLAGS   = $(BASE_CFLAGS) -O0 -g -fsanitize=address,undefined -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
 SANITIZE_CXXFLAGS = $(BASE_CXXFLAGS) -O0 -g -fsanitize=address,undefined -DCONTAINER_DEBUG -Iinclude $(POSIX_FLAGS)
 
-CFLAGS = $(RELEASE_CFLAGS)
+CFLAGS   = $(RELEASE_CFLAGS)
 CXXFLAGS = $(RELEASE_CXXFLAGS)
-LDFLAGS = -lm
+LDFLAGS  = -lm
 
 # Parallel builds
 MAKEFLAGS += -j$(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
@@ -42,14 +45,13 @@ LIBDIR = $(PREFIX)/lib
 # Source Files
 # ============================================================================
 
-SRCS = $(wildcard src/*.c)
-OBJS = $(patsubst src/%.c,$(BUILD_DIR)/src/%.o,$(SRCS))
+SRCS    = $(wildcard src/*.c)
+OBJS    = $(patsubst src/%.c,$(BUILD_DIR)/src/%.o,$(SRCS))
 DEP_FILES = $(OBJS:.o=.d)
-LIBRARY = $(BUILD_DIR)/libcontain.a
-SHARED_LIBRARY = $(BUILD_DIR)/libcontain.so.$(VERSION)
+LIBRARY          = $(BUILD_DIR)/libcontain.a
+SHARED_LIBRARY   = $(BUILD_DIR)/libcontain.so.$(VERSION)
 SHARED_LIBRARY_SONAME = libcontain.so.1
 
-# Check if sources exist
 ifeq ($(SRCS),)
 $(error No source files found in src/ directory)
 endif
@@ -58,34 +60,34 @@ endif
 # Test Files
 # ============================================================================
 
-TEST_DIR = tests
-TEST_NAMES = vector deque linkedlist hashset hashmap iterator chainer chainer2 typed allocator
-TEST_BINS = $(addprefix $(BUILD_DIR)/$(TEST_DIR)/, $(addsuffix _test, $(TEST_NAMES)))
+TEST_DIR     = tests
+TEST_NAMES   = vector deque linkedlist hashset hashmap iterator chainer chainer2 typed allocator
+TEST_BINS    = $(addprefix $(BUILD_DIR)/$(TEST_DIR)/, $(addsuffix _test, $(TEST_NAMES)))
 TEST_TARGETS = $(addprefix test-, $(TEST_NAMES))
 
 # ============================================================================
 # Benchmark Files
 # ============================================================================
 
-BENCH_DIR = benchmarks
-BENCH_NAMES = vector deque linkedlist hashset hashmap pipeline pipeline2 typed_vs_generic \
-              vs_uthash vs_klib vs_stb_ds vs_cpp
-BENCH_BINS = $(addprefix $(BUILD_DIR)/$(BENCH_DIR)/, $(addsuffix , $(BENCH_NAMES)))
+BENCH_DIR     = benchmarks
+BENCH_NAMES   = vector deque linkedlist hashset hashmap pipeline pipeline2 typed_vs_generic \
+                vs_uthash vs_klib vs_stb_ds vs_cpp
+BENCH_BINS    = $(addprefix $(BUILD_DIR)/$(BENCH_DIR)/, $(BENCH_NAMES))
 BENCH_TARGETS = $(addprefix bench-, $(BENCH_NAMES))
 
 # ============================================================================
 # Tour
 # ============================================================================
 
-TOUR = $(BUILD_DIR)/tests/tour
+TOUR     = $(BUILD_DIR)/tests/tour
 TOUR_SRC = tests/tour.c
 
 # ============================================================================
 # Dependency Flags
 # ============================================================================
 
-DEPFLAGS = -MMD -MP
-CFLAGS += $(DEPFLAGS)
+DEPFLAGS  = -MMD -MP
+CFLAGS   += $(DEPFLAGS)
 CXXFLAGS += $(DEPFLAGS)
 
 # ============================================================================
@@ -119,22 +121,21 @@ $(BUILD_DIR)/src/%.o: src/%.c | $(BUILD_DIR)/src
 $(BUILD_DIR)/src:
 	mkdir -p $@
 
-# Include dependency files
 -include $(DEP_FILES)
 
 # ============================================================================
 # Build Variants
 # ============================================================================
 
-release: CFLAGS = $(RELEASE_CFLAGS)
+release: CFLAGS   = $(RELEASE_CFLAGS)
 release: CXXFLAGS = $(RELEASE_CXXFLAGS)
 release: clean all
 
-debug: CFLAGS = $(DEBUG_CFLAGS)
+debug: CFLAGS   = $(DEBUG_CFLAGS)
 debug: CXXFLAGS = $(DEBUG_CXXFLAGS)
 debug: clean all
 
-sanitize: CFLAGS = $(SANITIZE_CFLAGS)
+sanitize: CFLAGS   = $(SANITIZE_CFLAGS)
 sanitize: CXXFLAGS = $(SANITIZE_CXXFLAGS)
 sanitize: clean all
 
@@ -183,15 +184,13 @@ test: $(TEST_TARGETS) tour
 	@echo "  All tests passed!"
 	@echo "========================================="
 
-# Pattern rule for test binaries
 $(BUILD_DIR)/$(TEST_DIR)/%_test: $(TEST_DIR)/%_test.c $(LIBRARY) | $(BUILD_DIR)/$(TEST_DIR)
-	@echo "  CC       $@"
+	@echo "  CC       $<"
 	$(CC) $(CFLAGS) $< -o $@ $(LIBRARY) $(LDFLAGS)
 
 $(BUILD_DIR)/$(TEST_DIR):
 	mkdir -p $@
 
-# Individual test targets - use pattern to avoid repetition
 $(TEST_TARGETS): test-%: $(BUILD_DIR)/$(TEST_DIR)/%_test $(LIBRARY)
 	./$(BUILD_DIR)/$(TEST_DIR)/$*_test
 
@@ -205,20 +204,17 @@ bench: $(BENCH_TARGETS)
 	@echo "  All Benchmarks Completed"
 	@echo "========================================="
 
-# Pattern rule for C benchmark binaries
 $(BUILD_DIR)/$(BENCH_DIR)/%: $(BENCH_DIR)/%.c $(LIBRARY) | $(BUILD_DIR)/$(BENCH_DIR)
-	@echo "  CC       $@"
+	@echo "  CC       $<"
 	$(CC) $(CFLAGS) $< -o $@ $(LIBRARY) $(LDFLAGS)
 
-# Pattern rule for C++ benchmark binaries
 $(BUILD_DIR)/$(BENCH_DIR)/%: $(BENCH_DIR)/%.cpp $(LIBRARY) | $(BUILD_DIR)/$(BENCH_DIR)
-	@echo "  CXX      $@"
+	@echo "  CXX      $<"
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LIBRARY) $(LDFLAGS)
 
 $(BUILD_DIR)/$(BENCH_DIR):
 	mkdir -p $@
 
-# Individual benchmark targets - use pattern to avoid repetition
 $(BENCH_TARGETS): bench-%: $(BUILD_DIR)/$(BENCH_DIR)/bench_% $(LIBRARY)
 	./$(BUILD_DIR)/$(BENCH_DIR)/bench_$*
 
@@ -281,7 +277,7 @@ check:
 # Coverage
 # ============================================================================
 
-coverage: CFLAGS = -std=c99 -Wall -Wextra -O0 -g -fprofile-arcs -ftest-coverage -Iinclude $(POSIX_FLAGS)
+coverage: CFLAGS = -std=gnu99 -Wall -Wextra -O0 -g -fprofile-arcs -ftest-coverage -Iinclude $(POSIX_FLAGS)
 coverage: clean test
 	@echo "  COVERAGE generating report"
 	gcovr --html --html-details -o $(BUILD_DIR)/coverage.html

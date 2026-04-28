@@ -41,11 +41,11 @@ static int cmp_str_ptr(const void *a, const void *b) {
 
 /* Alignment test types */
 typedef struct {
-    alignas(32) uint8_t data[32];
+    uint8_t data[32];
 } Aligned32;
 
 typedef struct {
-    alignas(64) uint8_t data[64];
+    uint8_t data[64];
 } Aligned64;
 
 /* ============================================================================
@@ -807,7 +807,7 @@ int test_vector_large_push(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
         int val = (int)i;
-        ASSERT_EQUAL(vector_push(vec, &val), LC_OK, "push failed at %zu", i);
+        ASSERT_EQUAL_FMT(vector_push(vec, &val), LC_OK, "push failed at %zu", i);
     }
     double push_time = timer_elapsed(&t);
 
@@ -816,7 +816,7 @@ int test_vector_large_push(void) {
 
     t = timer_start();
     for (size_t i = 0; i < N; i++) {
-        ASSERT_EQUAL(*(int *)vector_at(vec, i), (int)i, "wrong value at %zu", i);
+        ASSERT_EQUAL_FMT(*(int *)vector_at(vec, i), (int)i, "wrong value at %zu", i);
     }
     double access_time = timer_elapsed(&t);
     printf("    Access %zu elements: %.3f ms\n", N, access_time * 1000);
@@ -833,7 +833,7 @@ int test_vector_large_insert_front(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
         int val = (int)i;
-        ASSERT_EQUAL(vector_insert(vec, 0, &val), LC_OK, "insert front failed at %zu", i);
+        ASSERT_EQUAL_FMT(vector_insert(vec, 0, &val), LC_OK, "insert front failed at %zu", i);
     }
     double insert_time = timer_elapsed(&t);
     printf("    Insert %zu at front: %.3f ms\n", N, insert_time * 1000);
@@ -842,7 +842,7 @@ int test_vector_large_insert_front(void) {
 
     /* Verify reversed order */
     for (size_t i = 0; i < N; i++) {
-        ASSERT_EQUAL(*(int *)vector_at(vec, i), (int)(N - 1 - i), "wrong order at %zu", i);
+        ASSERT_EQUAL_FMT(*(int *)vector_at(vec, i), (int)(N - 1 - i), "wrong order at %zu", i);
     }
 
     vector_destroy(vec);
@@ -859,7 +859,7 @@ int test_vector_large_remove_front(void) {
 
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
-        ASSERT_EQUAL(vector_remove(vec, 0), LC_OK, "remove front failed at %zu", i);
+        ASSERT_EQUAL_FMT(vector_remove(vec, 0), LC_OK, "remove front failed at %zu", i);
         ASSERT_EQUAL(vector_len(vec), N - i - 1, "wrong length after remove");
     }
     double remove_time = timer_elapsed(&t);
@@ -882,7 +882,7 @@ int test_vector_large_insert_middle(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i += 1000) {
         int val = -1;
-        ASSERT_EQUAL(vector_insert(vec, i, &val), LC_OK, "insert middle failed at %zu", i);
+        ASSERT_EQUAL_FMT(vector_insert(vec, i, &val), LC_OK, "insert middle failed at %zu", i);
     }
     double insert_time = timer_elapsed(&t);
     printf("    Insert %zu in middle: %.3f ms\n", N / 1000, insert_time * 1000);
@@ -901,7 +901,7 @@ int test_vector_large_remove_middle(void) {
 
     Timer t = timer_start();
     for (size_t i = N; i > 0; i -= 1000) {
-        ASSERT_EQUAL(vector_remove(vec, i / 2), LC_OK, "remove middle failed at %zu", i);
+        ASSERT_EQUAL_FMT(vector_remove(vec, i / 2), LC_OK, "remove middle failed at %zu", i);
     }
     double remove_time = timer_elapsed(&t);
     printf("    Remove %zu from middle: %.3f ms\n", N / 1000, remove_time * 1000);
@@ -970,7 +970,7 @@ int test_vector_large_sort(void) {
     for (size_t i = 1; i < N; i++) {
         int prev = *(int *)vector_at(vec, i - 1);
         int curr = *(int *)vector_at(vec, i);
-        ASSERT_TRUE(prev <= curr, "sort order violation at %zu", i);
+        ASSERT_TRUE_FMT(prev <= curr, "sort order violation at %zu", i);
     }
 
     vector_destroy(vec);
@@ -1013,7 +1013,7 @@ int test_vector_large_clone(void) {
     ASSERT_EQUAL(vector_len(clone), N, "clone wrong length");
 
     for (size_t i = 0; i < N; i++) {
-        ASSERT_EQUAL(*(int *)vector_at(clone, i), (int)i, "clone wrong value at %zu", i);
+        ASSERT_EQUAL_FMT(*(int *)vector_at(clone, i), (int)i, "clone wrong value at %zu", i);
     }
 
     vector_destroy(vec);
@@ -1029,7 +1029,7 @@ int test_vector_large_strings(void) {
     Timer t = timer_start();
     for (size_t i = 0; i < N; i++) {
         snprintf(buf, sizeof(buf), "string_%zu", i);
-        ASSERT_EQUAL(vector_push(vec, buf), LC_OK, "push string failed at %zu", i);
+        ASSERT_EQUAL_FMT(vector_push(vec, buf), LC_OK, "push string failed at %zu", i);
     }
     double push_time = timer_elapsed(&t);
     printf("    Push %zu strings: %.3f ms\n", N, push_time * 1000);
@@ -1038,7 +1038,7 @@ int test_vector_large_strings(void) {
     for (size_t i = 0; i < N; i++) {
         char *s = (char *)vector_at(vec, i);
         snprintf(buf, sizeof(buf), "string_%zu", i);
-        ASSERT_STR_EQUAL(s, buf, "wrong string at %zu", i);
+        ASSERT_STR_EQUAL_FMT(s, buf, "wrong string at %zu", i);
     }
     double access_time = timer_elapsed(&t);
     printf("    Access %zu strings: %.3f ms\n", N, access_time * 1000);

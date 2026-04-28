@@ -67,16 +67,16 @@ static int tests_passed = 0;
  *
  * @note The test function should return 1 for PASS, 0 for FAIL.
  */
-#define TEST(func)                                                          \
-    do {                                                                    \
-        printf("Running %s... ", #func);                                    \
-        tests_run++;                                                        \
-        if (func()) {                                                       \
-            printf("PASS\n");                                               \
-            tests_passed++;                                                 \
-        } else {                                                            \
-            printf("FAIL\n");                                               \
-        }                                                                   \
+#define TEST(func)                                                             \
+    do {                                                                       \
+        printf("Running %s... ", #func);                                       \
+        tests_run++;                                                           \
+        if (func()) {                                                          \
+            printf("PASS\n");                                                  \
+            tests_passed++;                                                    \
+        } else {                                                               \
+            printf("FAIL\n");                                                  \
+        }                                                                      \
     } while (0)
 
 /**
@@ -91,12 +91,14 @@ static int tests_passed = 0;
  * ------------------------------------------------------------
  * @endcode
  */
-#define TEST_SUMMARY()                                                      \
-    do {                                                                    \
-        printf("\n------------------------------------------------------------\n"); \
-        printf("Tests run: %d, Passed: %d, Failed: %d\n",                   \
-               tests_run, tests_passed, tests_run - tests_passed);          \
-        printf("------------------------------------------------------------\n"); \
+#define TEST_SUMMARY()                                                         \
+    do {                                                                       \
+        printf("\n-----------------------------------------------------------" \
+               "-\n");                                                         \
+        printf("Tests run: %d, Passed: %d, Failed: %d\n", tests_run,           \
+               tests_passed, tests_run - tests_passed);                        \
+        printf(                                                                \
+            "------------------------------------------------------------\n"); \
     } while (0)
 
 /** @} */
@@ -107,6 +109,12 @@ static int tests_passed = 0;
  *
  * Each assertion prints a formatted error message and returns 0 from the
  * test function if the condition fails.
+ *
+ * Two variants are provided for each assertion:
+ *   - Plain variant: accepts a static message string
+ *   - _FMT variant: accepts a format string and variable arguments
+ *
+ * For multiple format arguments use snprintf into a buffer before asserting.
  * @{
  */
 
@@ -114,130 +122,246 @@ static int tests_passed = 0;
  * @brief Assert that a condition is true
  *
  * @param condition Expression to evaluate
- * @param fmt       Printf-style format string
+ * @param msg       Message string to print on failure
+ */
+#define ASSERT_TRUE(condition, msg)                                            \
+    do {                                                                       \
+        if (!(condition)) {                                                    \
+            printf("FAIL: %s\n", msg);                                         \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that a condition is true (formatted message)
+ *
+ * @param condition Expression to evaluate
+ * @param fmt       Format string
  * @param ...       Format arguments
  */
-#define ASSERT_TRUE(condition, fmt, ...)                                    \
-    do {                                                                    \
-        if (!(condition)) {                                                 \
-            printf("FAIL: " fmt "\n", ##__VA_ARGS__);                       \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_TRUE_FMT(condition, fmt, ...)                                   \
+    do {                                                                       \
+        if (!(condition)) {                                                    \
+            printf("FAIL: " fmt "\n", __VA_ARGS__);                          \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
  * @brief Assert that a condition is false
  *
  * @param condition Expression to evaluate
- * @param fmt       Printf-style format string
+ * @param msg       Message string to print on failure
+ */
+#define ASSERT_FALSE(condition, msg)                                           \
+    do {                                                                       \
+        if (condition) {                                                       \
+            printf("FAIL: %s\n", msg);                                         \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that a condition is false (formatted message)
+ *
+ * @param condition Expression to evaluate
+ * @param fmt       Format string
  * @param ...       Format arguments
  */
-#define ASSERT_FALSE(condition, fmt, ...)                                   \
-    do {                                                                    \
-        if (condition) {                                                    \
-            printf("FAIL: " fmt "\n", ##__VA_ARGS__);                       \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_FALSE_FMT(condition, fmt, ...)                                  \
+    do {                                                                       \
+        if (condition) {                                                       \
+            printf("FAIL: " fmt "\n", __VA_ARGS__);                          \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
  * @brief Assert that two integers are equal
  *
- * @param a First value
- * @param b Second value
- * @param fmt Printf-style format string
- * @param ... Format arguments
+ * @param a   First value
+ * @param b   Second value
+ * @param msg Message string to print on failure
  *
  * @note Values are cast to long for printing.
  */
-#define ASSERT_EQUAL(a, b, fmt, ...)                                        \
-    do {                                                                    \
-        if ((a) != (b)) {                                                   \
-            printf("FAIL: " fmt " (%ld != %ld)\n", ##__VA_ARGS__,           \
-                   (long)(a), (long)(b));                                   \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_EQUAL(a, b, msg)                                                \
+    do {                                                                       \
+        if ((a) != (b)) {                                                      \
+            printf("FAIL: %s (%ld != %ld)\n", msg, (long)(a), (long)(b));      \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that two integers are equal (formatted message)
+ *
+ * @param a   First value
+ * @param b   Second value
+ * @param fmt Format string
+ * @param ... Format arguments
+ */
+#define ASSERT_EQUAL_FMT(a, b, fmt, ...)                                       \
+    do {                                                                       \
+        if ((a) != (b)) {                                                      \
+            printf("FAIL: " fmt " (%ld != %ld)\n", __VA_ARGS__, (long)(a),   \
+                   (long)(b));                                                 \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
  * @brief Assert that two integers are not equal
  *
- * @param a First value
- * @param b Second value
- * @param fmt Printf-style format string
+ * @param a   First value
+ * @param b   Second value
+ * @param msg Message string to print on failure
+ */
+#define ASSERT_NOT_EQUAL(a, b, msg)                                            \
+    do {                                                                       \
+        if ((a) == (b)) {                                                      \
+            printf("FAIL: %s (%ld == %ld)\n", msg, (long)(a), (long)(b));      \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that two integers are not equal (formatted message)
+ *
+ * @param a   First value
+ * @param b   Second value
+ * @param fmt Format string
  * @param ... Format arguments
  */
-#define ASSERT_NOT_EQUAL(a, b, fmt, ...)                                    \
-    do {                                                                    \
-        if ((a) == (b)) {                                                   \
-            printf("FAIL: " fmt " (%ld == %ld)\n", ##__VA_ARGS__,           \
-                   (long)(a), (long)(b));                                   \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_NOT_EQUAL_FMT(a, b, fmt, ...)                                   \
+    do {                                                                       \
+        if ((a) == (b)) {                                                      \
+            printf("FAIL: " fmt " (%ld == %ld)\n", __VA_ARGS__, (long)(a),   \
+                   (long)(b));                                                 \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
  * @brief Assert that two pointers are equal
  *
- * @param a First pointer
- * @param b Second pointer
- * @param fmt Printf-style format string
+ * @param a   First pointer
+ * @param b   Second pointer
+ * @param msg Message string to print on failure
+ */
+#define ASSERT_PTR_EQUAL(a, b, msg)                                            \
+    do {                                                                       \
+        if ((a) != (b)) {                                                      \
+            printf("FAIL: %s (%p != %p)\n", msg, (void *)(a), (void *)(b));    \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that two pointers are equal (formatted message)
+ *
+ * @param a   First pointer
+ * @param b   Second pointer
+ * @param fmt Format string
  * @param ... Format arguments
  */
-#define ASSERT_PTR_EQUAL(a, b, fmt, ...)                                    \
-    do {                                                                    \
-        if ((a) != (b)) {                                                   \
-            printf("FAIL: " fmt " (%p != %p)\n", ##__VA_ARGS__,             \
-                   (void*)(a), (void*)(b));                                 \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_PTR_EQUAL_FMT(a, b, fmt, ...)                                   \
+    do {                                                                       \
+        if ((a) != (b)) {                                                      \
+            printf("FAIL: " fmt " (%p != %p)\n", __VA_ARGS__, (void *)(a),   \
+                   (void *)(b));                                               \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
  * @brief Assert that two pointers are not equal
  *
- * @param a First pointer
- * @param b Second pointer
- * @param fmt Printf-style format string
+ * @param a   First pointer
+ * @param b   Second pointer
+ * @param msg Message string to print on failure
+ */
+#define ASSERT_PTR_NOT_EQUAL(a, b, msg)                                        \
+    do {                                                                       \
+        if ((a) == (b)) {                                                      \
+            printf("FAIL: %s (%p == %p)\n", msg, (void *)(a), (void *)(b));    \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that two pointers are not equal (formatted message)
+ *
+ * @param a   First pointer
+ * @param b   Second pointer
+ * @param fmt Format string
  * @param ... Format arguments
  */
-#define ASSERT_PTR_NOT_EQUAL(a, b, fmt, ...)                                \
-    do {                                                                    \
-        if ((a) == (b)) {                                                   \
-            printf("FAIL: " fmt " (%p == %p)\n", ##__VA_ARGS__,             \
-                   (void*)(a), (void*)(b));                                 \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_PTR_NOT_EQUAL_FMT(a, b, fmt, ...)                               \
+    do {                                                                       \
+        if ((a) == (b)) {                                                      \
+            printf("FAIL: " fmt " (%p == %p)\n", __VA_ARGS__, (void *)(a),   \
+                   (void *)(b));                                               \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
  * @brief Assert that a pointer is NULL
  *
  * @param ptr Pointer to check
- * @param fmt Printf-style format string
+ * @param msg Message string to print on failure
+ */
+#define ASSERT_NULL(ptr, msg)                                                  \
+    do {                                                                       \
+        if ((ptr) != NULL) {                                                   \
+            printf("FAIL: %s\n", msg);                                         \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that a pointer is NULL (formatted message)
+ *
+ * @param ptr Pointer to check
+ * @param fmt Format string
  * @param ... Format arguments
  */
-#define ASSERT_NULL(ptr, fmt, ...)                                          \
-    do {                                                                    \
-        if ((ptr) != NULL) {                                                \
-            printf("FAIL: " fmt "\n", ##__VA_ARGS__);                       \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_NULL_FMT(ptr, fmt, ...)                                         \
+    do {                                                                       \
+        if ((ptr) != NULL) {                                                   \
+            printf("FAIL: " fmt "\n", __VA_ARGS__);                          \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
  * @brief Assert that a pointer is not NULL
  *
  * @param ptr Pointer to check
- * @param fmt Printf-style format string
+ * @param msg Message string to print on failure
+ */
+#define ASSERT_NOT_NULL(ptr, msg)                                              \
+    do {                                                                       \
+        if ((ptr) == NULL) {                                                   \
+            printf("FAIL: %s\n", msg);                                         \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that a pointer is not NULL (formatted message)
+ *
+ * @param ptr Pointer to check
+ * @param fmt Format string
  * @param ... Format arguments
  */
-#define ASSERT_NOT_NULL(ptr, fmt, ...)                                      \
-    do {                                                                    \
-        if ((ptr) == NULL) {                                                \
-            printf("FAIL: " fmt "\n", ##__VA_ARGS__);                       \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_NOT_NULL_FMT(ptr, fmt, ...)                                     \
+    do {                                                                       \
+        if ((ptr) == NULL) {                                                   \
+            printf("FAIL: " fmt "\n", __VA_ARGS__);                          \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
@@ -245,18 +369,35 @@ static int tests_passed = 0;
  *
  * Uses strcmp() for comparison.
  *
- * @param a First string
- * @param b Second string
- * @param fmt Printf-style format string
+ * @param a   First string
+ * @param b   Second string
+ * @param msg Message string to print on failure
+ */
+#define ASSERT_STR_EQUAL(a, b, msg)                                            \
+    do {                                                                       \
+        if (strcmp((a), (b)) != 0) {                                           \
+            printf("FAIL: %s (\"%s\" != \"%s\")\n", msg, (a), (b));            \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that two strings are equal (formatted message)
+ *
+ * Uses strcmp() for comparison.
+ *
+ * @param a   First string
+ * @param b   Second string
+ * @param fmt Format string
  * @param ... Format arguments
  */
-#define ASSERT_STR_EQUAL(a, b, fmt, ...)                                    \
-    do {                                                                    \
-        if (strcmp((a), (b)) != 0) {                                        \
-            printf("FAIL: " fmt " (\"%s\" != \"%s\")\n", ##__VA_ARGS__,     \
-                   (a), (b));                                               \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_STR_EQUAL_FMT(a, b, fmt, ...)                                   \
+    do {                                                                       \
+        if (strcmp((a), (b)) != 0) {                                           \
+            printf("FAIL: " fmt " (\"%s\" != \"%s\")\n", __VA_ARGS__, (a),   \
+                   (b));                                                       \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
@@ -264,52 +405,99 @@ static int tests_passed = 0;
  *
  * Uses strcmp() for comparison.
  *
- * @param a First string
- * @param b Second string
- * @param fmt Printf-style format string
+ * @param a   First string
+ * @param b   Second string
+ * @param msg Message string to print on failure
+ */
+#define ASSERT_STR_NOT_EQUAL(a, b, msg)                                        \
+    do {                                                                       \
+        if (strcmp((a), (b)) == 0) {                                           \
+            printf("FAIL: %s (\"%s\" == \"%s\")\n", msg, (a), (b));            \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that two strings are not equal (formatted message)
+ *
+ * Uses strcmp() for comparison.
+ *
+ * @param a   First string
+ * @param b   Second string
+ * @param fmt Format string
  * @param ... Format arguments
  */
-#define ASSERT_STR_NOT_EQUAL(a, b, fmt, ...)                                \
-    do {                                                                    \
-        if (strcmp((a), (b)) == 0) {                                        \
-            printf("FAIL: " fmt " (\"%s\" == \"%s\")\n", ##__VA_ARGS__,     \
-                   (a), (b));                                               \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_STR_NOT_EQUAL_FMT(a, b, fmt, ...)                               \
+    do {                                                                       \
+        if (strcmp((a), (b)) == 0) {                                           \
+            printf("FAIL: " fmt " (\"%s\" == \"%s\")\n", __VA_ARGS__, (a),   \
+                   (b));                                                       \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
  * @brief Assert that a < b (size_t values)
  *
- * @param a First value
- * @param b Second value
- * @param fmt Printf-style format string
+ * @param a   First value
+ * @param b   Second value
+ * @param msg Message string to print on failure
+ */
+#define ASSERT_LESS(a, b, msg)                                                 \
+    do {                                                                       \
+        if ((a) >= (b)) {                                                      \
+            printf("FAIL: %s (%zu >= %zu)\n", msg, (size_t)(a), (size_t)(b));  \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that a < b (formatted message)
+ *
+ * @param a   First value
+ * @param b   Second value
+ * @param fmt Format string
  * @param ... Format arguments
  */
-#define ASSERT_LESS(a, b, fmt, ...)                                         \
-    do {                                                                    \
-        if ((a) >= (b)) {                                                   \
-            printf("FAIL: " fmt " (%zu >= %zu)\n", ##__VA_ARGS__,           \
-                   (size_t)(a), (size_t)(b));                               \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_LESS_FMT(a, b, fmt, ...)                                        \
+    do {                                                                       \
+        if ((a) >= (b)) {                                                      \
+            printf("FAIL: " fmt " (%zu >= %zu)\n", __VA_ARGS__, (size_t)(a), \
+                   (size_t)(b));                                               \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /**
  * @brief Assert that a > b (size_t values)
  *
- * @param a First value
- * @param b Second value
- * @param fmt Printf-style format string
+ * @param a   First value
+ * @param b   Second value
+ * @param msg Message string to print on failure
+ */
+#define ASSERT_GREATER(a, b, msg)                                              \
+    do {                                                                       \
+        if ((a) <= (b)) {                                                      \
+            printf("FAIL: %s (%zu <= %zu)\n", msg, (size_t)(a), (size_t)(b));  \
+            return 0;                                                          \
+        }                                                                      \
+    } while (0)
+
+/**
+ * @brief Assert that a > b (formatted message)
+ *
+ * @param a   First value
+ * @param b   Second value
+ * @param fmt Format string
  * @param ... Format arguments
  */
-#define ASSERT_GREATER(a, b, fmt, ...)                                      \
-    do {                                                                    \
-        if ((a) <= (b)) {                                                   \
-            printf("FAIL: " fmt " (%zu <= %zu)\n", ##__VA_ARGS__,           \
-                   (size_t)(a), (size_t)(b));                               \
-            return 0;                                                       \
-        }                                                                   \
+#define ASSERT_GREATER_FMT(a, b, fmt, ...)                                     \
+    do {                                                                       \
+        if ((a) <= (b)) {                                                      \
+            printf("FAIL: " fmt " (%zu <= %zu)\n", __VA_ARGS__, (size_t)(a), \
+                   (size_t)(b));                                               \
+            return 0;                                                          \
+        }                                                                      \
     } while (0)
 
 /** @} */

@@ -1536,7 +1536,7 @@ static int perf_vector_push(void) {
     double seconds = timer_elapsed(&t);
 
     printf("    IntVector_push %d times: %.3f seconds\n", N, seconds);
-    ASSERT_EQUAL(IntVector_len(vec), N, "all elements pushed");
+    ASSERT_EQUAL(IntVector_len(vec), (size_t)N, "all elements pushed");
 
     IntVector_destroy(vec);
     return 1;
@@ -1553,7 +1553,7 @@ static int perf_deque_push_back(void) {
     double seconds = timer_elapsed(&t);
 
     printf("    IntDeque_push_back %d times: %.3f seconds\n", N, seconds);
-    ASSERT_EQUAL(IntDeque_len(deq), N, "all elements pushed");
+    ASSERT_EQUAL(IntDeque_len(deq), (size_t)N, "all elements pushed");
 
     IntDeque_destroy(deq);
     return 1;
@@ -1570,7 +1570,7 @@ static int perf_list_push_back(void) {
     double seconds = timer_elapsed(&t);
 
     printf("    IntList_push_back %d times: %.3f seconds\n", N, seconds);
-    ASSERT_EQUAL(IntList_len(list), N, "all elements pushed");
+    ASSERT_EQUAL(IntList_len(list), (size_t)N, "all elements pushed");
 
     IntList_destroy(list);
     return 1;
@@ -1587,7 +1587,7 @@ static int perf_hashset_insert(void) {
     double seconds = timer_elapsed(&t);
 
     printf("    IntSet_insert %d times: %.3f seconds\n", N, seconds);
-    ASSERT_EQUAL(IntSet_len(set), N, "all elements inserted");
+    ASSERT_EQUAL(IntSet_len(set), (size_t)N, "all elements inserted");
 
     IntSet_destroy(set);
     return 1;
@@ -1606,7 +1606,7 @@ static int perf_hashmap_insert(void) {
     double seconds = timer_elapsed(&t);
 
     printf("    StrIntMap_insert %d times: %.3f seconds\n", N, seconds);
-    ASSERT_EQUAL(StrIntMap_len(map), N, "all pairs inserted");
+    ASSERT_EQUAL(StrIntMap_len(map), (size_t)N, "all pairs inserted");
 
     StrIntMap_destroy(map);
     return 1;

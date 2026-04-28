@@ -572,7 +572,7 @@ int test_chainer_collect_into_int_to_double(void) {
     double expected[] = {0.0, 2.0, 4.0, 6.0, 8.0};
     for (size_t i = 0; i < 5; i++) {
         double *val = (double *)vector_at(dst, i);
-        ASSERT_EQUAL(*val, expected[i], "wrong double value at index %zu", i);
+        ASSERT_EQUAL_FMT(*val, expected[i], "wrong double value at index %zu", i);
     }
     
     chain_destroy(&c);
@@ -597,7 +597,7 @@ int test_chainer_collect_into_int_to_float(void) {
     for (size_t i = 0; i < 10; i++) {
         float *val = (float *)vector_at(dst, i);
         float expected = (float)i;
-        ASSERT_EQUAL(*val, expected, "wrong float value at index %zu", i);
+        ASSERT_EQUAL_FMT(*val, expected, "wrong float value at index %zu", i);
     }
     
     chain_destroy(&c);
@@ -623,7 +623,7 @@ int test_chainer_collect_into_filter_map_collect(void) {
     double expected[] = {6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0};
     for (size_t i = 0; i < 7; i++) {
         double *val = (double *)vector_at(dst, i);
-        ASSERT_EQUAL(*val, expected[i], "wrong double value at index %zu", i);
+        ASSERT_EQUAL_FMT(*val, expected[i], "wrong double value at index %zu", i);
     }
     
     chain_destroy(&c);
@@ -647,13 +647,13 @@ int test_chainer_collect_into_existing_double_vector(void) {
     
     for (size_t i = 0; i < 3; i++) {
         double *val = (double *)vector_at(dst, i);
-        ASSERT_EQUAL(*val, (double)i, "existing value changed at index %zu", i);
+        ASSERT_EQUAL_FMT(*val, (double)i, "existing value changed at index %zu", i);
     }
     
     double expected[] = {0.0, 2.0, 4.0, 6.0, 8.0};
     for (size_t i = 0; i < 5; i++) {
         double *val = (double *)vector_at(dst, i + 3);
-        ASSERT_EQUAL(*val, expected[i], "wrong double value at index %zu", i + 3);
+        ASSERT_EQUAL_FMT(*val, expected[i], "wrong double value at index %zu", i + 3);
     }
     
     chain_destroy(&c);
