@@ -1,6 +1,6 @@
 /** @file linkedlist.h
  * @brief Type-safe wrappers for LinkedList container
- * libcontain - https://github.com/sadichel/libcontain 
+ * libcontain - https://github.com/sadichel/libcontain
  *
  * This header provides macro-based type-safe wrappers around the generic
  * LinkedList API. Uses zero-cost overlay design where the typed struct shares
@@ -42,27 +42,27 @@
 #ifndef CONTAIN_TYPED_LINKEDLIST_PDR_H
 #define CONTAIN_TYPED_LINKEDLIST_PDR_H
 
-#include <stdlib.h>
 #include <contain/linkedlist.h>
+#include <stdlib.h>
 
 /* Internal debug macros */
 #ifdef CONTAINER_DEBUG
 #include <stdio.h>
-#define LC_LIST_DEBUG_NULL(n, func) \
-    if (!(n)) { \
+#define LC_LIST_DEBUG_NULL(n, func)                                       \
+    if (!(n)) {                                                           \
         fprintf(stderr, "libcontain panic: %s() - NULL pointer\n", func); \
-        abort(); \
+        abort();                                                          \
     }
-#define LC_LIST_DEBUG_BOUNDS(list, idx, func) \
-    if ((idx) >= linkedlist_len((LinkedList*)list)) { \
+#define LC_LIST_DEBUG_BOUNDS(list, idx, func)                                    \
+    if ((idx) >= linkedlist_len((LinkedList *)list)) {                           \
         fprintf(stderr, "libcontain panic: %s(%zu) - index %zu >= length %zu\n", \
-                func, idx, idx, linkedlist_len((LinkedList*)list)); \
-        abort(); \
+                func, idx, idx, linkedlist_len((LinkedList *)list));             \
+        abort();                                                                 \
     }
-#define LC_LIST_DEBUG_EMPTY(list, func) \
-    if (linkedlist_is_empty((LinkedList*)list)) { \
+#define LC_LIST_DEBUG_EMPTY(list, func)                                                \
+    if (linkedlist_is_empty((LinkedList *)list)) {                                     \
         fprintf(stderr, "libcontain panic: %s() - called on empty container\n", func); \
-        abort(); \
+        abort();                                                                       \
     }
 #else
 #define LC_LIST_DEBUG_NULL(n, func) ((void)0)
@@ -155,297 +155,297 @@
  * @note Panics (abort) in debug mode when preconditions are violated.
  *       Define CONTAINER_DEBUG to enable runtime checks.
  */
-#define DECL_LINKEDLIST_TYPE(T, size, name) \
-    /* Compile-time size validation */ \
-    LC_STATIC_ASSERT((size) == 0 || (size) == sizeof(T), \
-        "libcontain: size must be 0 (string mode with T=const const char*) or sizeof(T) for fixed-size"); \
-    \
-    /* Zero-cost overlay: 'name' has same layout as LinkedList */ \
-    typedef struct name { \
-        Container base; \
-    } name; \
-    \
-    /* ===== Creation & Destruction ===== */ \
-    \
-    /** @brief Create a new empty typed linked list */ \
-    static inline LC_UNUSED name* name##_create(void) { \
-        return (name*)linkedlist_create(size); \
-    } \
-    \
-    /** @brief Create a new typed linked list with a custom comparator */ \
-    static inline LC_UNUSED name* name##_create_with_comparator(lc_Comparator cmp) { \
-        return (name*)linkedlist_create_with_comparator(size, cmp); \
-    } \
-    \
-    /** @brief Create a new typed linked list with aligned elements */ \
-    static inline LC_UNUSED name* name##_create_aligned(size_t align) { \
-        return (name*)linkedlist_create_aligned(size, align); \
-    } \
-    \
-    /** @brief Destroy a typed linked list and free all resources */ \
-    static inline LC_UNUSED void name##_destroy(name *n) { \
-        linkedlist_destroy((LinkedList*)n); \
-    } \
-    \
-    /* ===== Container Access ===== */ \
-    \
-    /** @brief Get the underlying generic LinkedList pointer (zero-cost cast) */ \
-    static inline LC_UNUSED LinkedList *name##_unwrap(name *n) { \
-        return (LinkedList*)n; \
-    } \
-    \
-    /** @brief Get the underlying generic LinkedList pointer (const, zero-cost cast) */ \
-    static inline LC_UNUSED const LinkedList *name##_unwrap_const(const name *n) { \
-        return (const LinkedList*)n; \
-    } \
-    \
-    /** \
-     * @brief Wrap generic container (zero-cost cast, takes ownership) \
-     * \
-     * After calling wrap, do NOT destroy the original container. \
-     * Use name##_destroy() to free both. \
-     */ \
-    static inline LC_UNUSED name* name##_wrap(Container *c) { \
-        LC_LIST_DEBUG_NULL(c, #name "_wrap"); \
-        return (name*)c; \
-    } \
-    \
-    /** @brief Create a new empty linked list of the same type */ \
-    static inline LC_UNUSED name* name##_instance(const name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_instance"); \
-        return (name*)linkedlist_instance((LinkedList*)n); \
-    } \
-    \
-    /* ===== Queries ===== */ \
-    \
-    /** @brief Get the number of elements in the list */ \
-    static inline LC_UNUSED size_t name##_len(const name *n) { \
-        return n ? linkedlist_len((LinkedList*)n) : 0; \
-    } \
-    \
-    /** @brief Check if the list is empty */ \
-    static inline LC_UNUSED bool name##_is_empty(const name *n) { \
-        return n ? linkedlist_is_empty((LinkedList*)n) : true; \
-    } \
-    \
-    /** @brief Find the first occurrence of an element (O(n)) */ \
-    static inline LC_UNUSED size_t name##_find(const name *n, T val) { \
-        LC_LIST_DEBUG_NULL(n, #name "_find"); \
-        if (size == 0) { \
-            void *ptr; \
-            memcpy(&ptr, &val, sizeof(void*)); \
-            return linkedlist_find((LinkedList*)n, ptr); \
-        } \
-        return linkedlist_find((LinkedList*)n, &val); \
-    } \
-    \
-    /** @brief Find the last occurrence of an element (O(n)) */ \
-    static inline LC_UNUSED size_t name##_rfind(const name *n, T val) { \
-        LC_LIST_DEBUG_NULL(n, #name "_rfind"); \
-        if (size == 0) { \
-            void *ptr; \
-            memcpy(&ptr, &val, sizeof(void*)); \
-            return linkedlist_rfind((LinkedList*)n, ptr); \
-        } \
-        return linkedlist_rfind((LinkedList*)n, &val); \
-    } \
-    \
-    /** @brief Check if an element exists in the list (O(n)) */ \
-    static inline LC_UNUSED bool name##_contains(const name *n, T val) { \
-        return name##_find(n, val) != LIST_NPOS; \
-    } \
-    \
-    /* ===== Insertion ===== */ \
-    \
-    /** @brief Prepend an element to the front of the list (O(1)) */ \
-    static inline LC_UNUSED int name##_push_front(name *n, T val) { \
-        LC_LIST_DEBUG_NULL(n, #name "_push_front"); \
-        if (size == 0) { \
-            void *ptr; \
-            memcpy(&ptr, &val, sizeof(void*)); \
-            return linkedlist_push_front((LinkedList*)n, ptr); \
-        } \
-        return linkedlist_push_front((LinkedList*)n, &val); \
-    } \
-    \
-    /** @brief Append an element to the back of the list (O(1)) */ \
-    static inline LC_UNUSED int name##_push_back(name *n, T val) { \
-        LC_LIST_DEBUG_NULL(n, #name "_push_back"); \
-        if (size == 0) { \
-            void *ptr; \
-            memcpy(&ptr, &val, sizeof(void*)); \
-            return linkedlist_push_back((LinkedList*)n, ptr); \
-        } \
-        return linkedlist_push_back((LinkedList*)n, &val); \
-    } \
-    \
-    /** @brief Insert an element at the specified position (O(n)) */ \
-    static inline LC_UNUSED int name##_insert(name *n, size_t pos, T val) { \
-        LC_LIST_DEBUG_NULL(n, #name "_insert"); \
-        if (size == 0) { \
-            void *ptr; \
-            memcpy(&ptr, &val, sizeof(void*)); \
-            return linkedlist_insert((LinkedList*)n, pos, ptr); \
-        } \
-        return linkedlist_insert((LinkedList*)n, pos, &val); \
-    } \
-    \
-    /** @brief Insert a range of elements from another linked list */ \
-    static inline LC_UNUSED int name##_insert_range(name *dst, size_t pos, const name *src, size_t from, size_t to) { \
-        LC_LIST_DEBUG_NULL(dst, #name "_insert_range"); \
-        LC_LIST_DEBUG_NULL(src, #name "_insert_range"); \
-        return linkedlist_insert_range((LinkedList*)dst, pos, (LinkedList*)src, from, to); \
-    } \
-    \
-    /** @brief Append all elements from another linked list */ \
-    static inline LC_UNUSED int name##_append(name *dst, const name *src) { \
-        LC_LIST_DEBUG_NULL(dst, #name "_append"); \
-        LC_LIST_DEBUG_NULL(src, #name "_append"); \
-        return name##_insert_range(dst, name##_len(dst), src, 0, name##_len(src)); \
-    } \
-    \
-    /* ===== Access & Modification ===== */ \
-    \
-    /** @brief Set an element at the specified position (O(n)) */ \
-    static inline LC_UNUSED int name##_set(name *n, size_t pos, T val) { \
-        LC_LIST_DEBUG_NULL(n, #name "_set"); \
-        LC_LIST_DEBUG_BOUNDS(n, pos, #name "_set"); \
-        if (size == 0) { \
-            void *ptr; \
-            memcpy(&ptr, &val, sizeof(void*)); \
-            return linkedlist_set((LinkedList*)n, pos, ptr); \
-        } \
-        return linkedlist_set((LinkedList*)n, pos, &val); \
-    } \
-    \
-    /** @brief Get an element at the specified position (O(n), panics if out of bounds) */ \
-    static inline LC_UNUSED T name##_at(const name *n, size_t pos) { \
-        LC_LIST_DEBUG_NULL(n, #name "_at"); \
-        LC_LIST_DEBUG_BOUNDS(n, pos, #name "_at"); \
-        void *slot = linkedlist_at_mut((LinkedList*)n, pos); \
-        return *(T*)slot; \
-    } \
-    \
-    /** @brief Get an element or return default if out of bounds */ \
-    static inline LC_UNUSED T name##_at_or_default(const name *n, size_t pos, T default_val) { \
-        LC_LIST_DEBUG_NULL(n, #name "_at_or_default"); \
-        if (pos >= linkedlist_len((LinkedList*)n)) return default_val; \
-        void *slot = linkedlist_at_mut((LinkedList*)n, pos); \
-        return slot ? *(T*)slot : default_val; \
-    } \
-    \
-    /** @brief Get the first element (O(1), panics if empty) */ \
-    static inline LC_UNUSED T name##_front(const name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_front"); \
-        LC_LIST_DEBUG_EMPTY(n, #name "_front"); \
-        void *slot = linkedlist_front_mut((LinkedList*)n); \
-        return *(T*)slot; \
-    } \
-    \
-    /** @brief Get the last element (O(1), panics if empty) */ \
-    static inline LC_UNUSED T name##_back(const name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_back"); \
-        LC_LIST_DEBUG_EMPTY(n, #name "_back"); \
-        void *slot = linkedlist_back_mut((LinkedList*)n); \
-        return *(T*)slot; \
-    } \
-    \
-    /** @brief Get pointer to element (NULL if out of bounds) */ \
-    static inline LC_UNUSED T* name##_get_ptr(name *n, size_t pos) { \
-        LC_LIST_DEBUG_NULL(n, #name "_get_ptr"); \
-        if (pos >= linkedlist_len((LinkedList*)n)) return NULL; \
-        return (T*)linkedlist_at_mut((LinkedList*)n, pos); \
-    } \
-    \
-    /* ===== Removal ===== */ \
-    \
-    /** @brief Remove and return the first element (O(1)) */ \
-    static inline LC_UNUSED int name##_pop_front(name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_pop_front"); \
-        return linkedlist_pop_front((LinkedList*)n); \
-    } \
-    \
-    /** @brief Remove and return the last element (O(1)) */ \
-    static inline LC_UNUSED int name##_pop_back(name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_pop_back"); \
-        return linkedlist_pop_back((LinkedList*)n); \
-    } \
-    \
-    /** @brief Remove an element at the specified position (O(n)) */ \
-    static inline LC_UNUSED int name##_remove(name *n, size_t pos) { \
-        LC_LIST_DEBUG_NULL(n, #name "_remove"); \
-        return linkedlist_remove((LinkedList*)n, pos); \
-    } \
-    \
-    /** @brief Remove all elements from the list */ \
-    static inline LC_UNUSED void name##_clear(name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_clear"); \
-        linkedlist_clear((LinkedList*)n); \
-    } \
-    \
-    /* ===== Configuration ===== */ \
-    \
-    /** @brief Set the comparator for the list */ \
-    static inline LC_UNUSED int name##_set_comparator(name *n, lc_Comparator cmp) { \
-        LC_LIST_DEBUG_NULL(n, #name "_set_comparator"); \
-        return linkedlist_set_comparator((LinkedList*)n, cmp); \
-    } \
-    \
-    /* ===== In-place Operations ===== */ \
-    \
-    /** @brief Reverse the list in place (O(n)) */ \
-    static inline LC_UNUSED void name##_reverse_inplace(name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_reverse_inplace"); \
-        linkedlist_reverse_inplace((LinkedList*)n); \
-    } \
-    \
-    /** @brief Sort the list in place (O(n log n)) */ \
-    static inline LC_UNUSED int name##_sort(name *n, lc_Comparator cmp) { \
-        LC_LIST_DEBUG_NULL(n, #name "_sort"); \
-        return linkedlist_sort((LinkedList*)n, cmp); \
-    } \
-    \
-    /* ===== Copy & View ===== */ \
-    \
-    /** @brief Create a deep copy of the list */ \
-    static inline LC_UNUSED name* name##_clone(const name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_clone"); \
-        return (name*)linkedlist_clone((LinkedList*)n); \
-    } \
-    \
-    /** @brief Create a new list with elements in reverse order (O(n)) */ \
-    static inline LC_UNUSED name* name##_reverse(const name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_reverse"); \
-        return (name*)linkedlist_reverse((LinkedList*)n); \
-    } \
-    \
-    /** @brief Extract a sublist as a new list (O(n)) */ \
-    static inline LC_UNUSED name* name##_sublist(const name *n, size_t from, size_t to) { \
-        LC_LIST_DEBUG_NULL(n, #name "_sublist"); \
-        return (name*)linkedlist_sublist((LinkedList*)n, from, to); \
-    } \
-    \
-    /** @brief Swap contents of two typed linked lists */ \
-    static inline LC_UNUSED void name##_swap(name *a, name *b) { \
-        LC_LIST_DEBUG_NULL(a, #name "_swap"); \
-        LC_LIST_DEBUG_NULL(b, #name "_swap"); \
-        name tmp = *a; \
-        *a = *b; \
-        *b = tmp; \
-    } \
-    \
-    /* ===== Iteration ===== */ \
-    \
-    /** @brief Create a forward iterator over the list */ \
-    static inline LC_UNUSED Iterator name##_iter(const name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_iter"); \
-        return linkedlist_iter((LinkedList*)n); \
-    } \
-    \
-    /** @brief Create a reverse iterator over the list */ \
-    static inline LC_UNUSED Iterator name##_iter_reversed(const name *n) { \
-        LC_LIST_DEBUG_NULL(n, #name "_iter_reversed"); \
-        return linkedlist_iter_reversed((LinkedList*)n); \
+#define DECL_LINKEDLIST_TYPE(T, size, name)                                                                            \
+    /* Compile-time size validation */                                                                                 \
+    LC_STATIC_ASSERT((size) == 0 || (size) == sizeof(T),                                                               \
+                     "libcontain: size must be 0 (string mode with T=const const char*) or sizeof(T) for fixed-size"); \
+                                                                                                                       \
+    /* Zero-cost overlay: 'name' has same layout as LinkedList */                                                      \
+    typedef struct name {                                                                                              \
+        Container base;                                                                                                \
+    } name;                                                                                                            \
+                                                                                                                       \
+    /* ===== Creation & Destruction ===== */                                                                           \
+                                                                                                                       \
+    /** @brief Create a new empty typed linked list */                                                                 \
+    static inline LC_UNUSED name *name##_create(void) {                                                                \
+        return (name *)linkedlist_create(size);                                                                        \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Create a new typed linked list with a custom comparator */                                              \
+    static inline LC_UNUSED name *name##_create_with_comparator(lc_Comparator cmp) {                                   \
+        return (name *)linkedlist_create_with_comparator(size, cmp);                                                   \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Create a new typed linked list with aligned elements */                                                 \
+    static inline LC_UNUSED name *name##_create_aligned(size_t align) {                                                \
+        return (name *)linkedlist_create_aligned(size, align);                                                         \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Destroy a typed linked list and free all resources */                                                   \
+    static inline LC_UNUSED void name##_destroy(name *n) {                                                             \
+        linkedlist_destroy((LinkedList *)n);                                                                           \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ===== Container Access ===== */                                                                                 \
+                                                                                                                       \
+    /** @brief Get the underlying generic LinkedList pointer (zero-cost cast) */                                       \
+    static inline LC_UNUSED LinkedList *name##_unwrap(name *n) {                                                       \
+        return (LinkedList *)n;                                                                                        \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get the underlying generic LinkedList pointer (const, zero-cost cast) */                                \
+    static inline LC_UNUSED const LinkedList *name##_unwrap_const(const name *n) {                                     \
+        return (const LinkedList *)n;                                                                                  \
+    }                                                                                                                  \
+                                                                                                                       \
+    /**                                                                                                                \
+     * @brief Wrap generic container (zero-cost cast, takes ownership)                                                 \
+     *                                                                                                                 \
+     * After calling wrap, do NOT destroy the original container.                                                      \
+     * Use name##_destroy() to free both.                                                                              \
+     */                                                                                                                \
+    static inline LC_UNUSED name *name##_wrap(Container *c) {                                                          \
+        LC_LIST_DEBUG_NULL(c, #name "_wrap");                                                                          \
+        return (name *)c;                                                                                              \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Create a new empty linked list of the same type */                                                      \
+    static inline LC_UNUSED name *name##_instance(const name *n) {                                                     \
+        LC_LIST_DEBUG_NULL(n, #name "_instance");                                                                      \
+        return (name *)linkedlist_instance((LinkedList *)n);                                                           \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ===== Queries ===== */                                                                                          \
+                                                                                                                       \
+    /** @brief Get the number of elements in the list */                                                               \
+    static inline LC_UNUSED size_t name##_len(const name *n) {                                                         \
+        return n ? linkedlist_len((LinkedList *)n) : 0;                                                                \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Check if the list is empty */                                                                           \
+    static inline LC_UNUSED bool name##_is_empty(const name *n) {                                                      \
+        return n ? linkedlist_is_empty((LinkedList *)n) : true;                                                        \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Find the first occurrence of an element (O(n)) */                                                       \
+    static inline LC_UNUSED size_t name##_find(const name *n, T val) {                                                 \
+        LC_LIST_DEBUG_NULL(n, #name "_find");                                                                          \
+        if (size == 0) {                                                                                               \
+            void *ptr;                                                                                                 \
+            memcpy(&ptr, &val, sizeof(void *));                                                                        \
+            return linkedlist_find((LinkedList *)n, ptr);                                                              \
+        }                                                                                                              \
+        return linkedlist_find((LinkedList *)n, &val);                                                                 \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Find the last occurrence of an element (O(n)) */                                                        \
+    static inline LC_UNUSED size_t name##_rfind(const name *n, T val) {                                                \
+        LC_LIST_DEBUG_NULL(n, #name "_rfind");                                                                         \
+        if (size == 0) {                                                                                               \
+            void *ptr;                                                                                                 \
+            memcpy(&ptr, &val, sizeof(void *));                                                                        \
+            return linkedlist_rfind((LinkedList *)n, ptr);                                                             \
+        }                                                                                                              \
+        return linkedlist_rfind((LinkedList *)n, &val);                                                                \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Check if an element exists in the list (O(n)) */                                                        \
+    static inline LC_UNUSED bool name##_contains(const name *n, T val) {                                               \
+        return name##_find(n, val) != LIST_NPOS;                                                                       \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ===== Insertion ===== */                                                                                        \
+                                                                                                                       \
+    /** @brief Prepend an element to the front of the list (O(1)) */                                                   \
+    static inline LC_UNUSED int name##_push_front(name *n, T val) {                                                    \
+        LC_LIST_DEBUG_NULL(n, #name "_push_front");                                                                    \
+        if (size == 0) {                                                                                               \
+            void *ptr;                                                                                                 \
+            memcpy(&ptr, &val, sizeof(void *));                                                                        \
+            return linkedlist_push_front((LinkedList *)n, ptr);                                                        \
+        }                                                                                                              \
+        return linkedlist_push_front((LinkedList *)n, &val);                                                           \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Append an element to the back of the list (O(1)) */                                                     \
+    static inline LC_UNUSED int name##_push_back(name *n, T val) {                                                     \
+        LC_LIST_DEBUG_NULL(n, #name "_push_back");                                                                     \
+        if (size == 0) {                                                                                               \
+            void *ptr;                                                                                                 \
+            memcpy(&ptr, &val, sizeof(void *));                                                                        \
+            return linkedlist_push_back((LinkedList *)n, ptr);                                                         \
+        }                                                                                                              \
+        return linkedlist_push_back((LinkedList *)n, &val);                                                            \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Insert an element at the specified position (O(n)) */                                                   \
+    static inline LC_UNUSED int name##_insert(name *n, size_t pos, T val) {                                            \
+        LC_LIST_DEBUG_NULL(n, #name "_insert");                                                                        \
+        if (size == 0) {                                                                                               \
+            void *ptr;                                                                                                 \
+            memcpy(&ptr, &val, sizeof(void *));                                                                        \
+            return linkedlist_insert((LinkedList *)n, pos, ptr);                                                       \
+        }                                                                                                              \
+        return linkedlist_insert((LinkedList *)n, pos, &val);                                                          \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Insert a range of elements from another linked list */                                                  \
+    static inline LC_UNUSED int name##_insert_range(name *dst, size_t pos, const name *src, size_t from, size_t to) {  \
+        LC_LIST_DEBUG_NULL(dst, #name "_insert_range");                                                                \
+        LC_LIST_DEBUG_NULL(src, #name "_insert_range");                                                                \
+        return linkedlist_insert_range((LinkedList *)dst, pos, (LinkedList *)src, from, to);                           \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Append all elements from another linked list */                                                         \
+    static inline LC_UNUSED int name##_append(name *dst, const name *src) {                                            \
+        LC_LIST_DEBUG_NULL(dst, #name "_append");                                                                      \
+        LC_LIST_DEBUG_NULL(src, #name "_append");                                                                      \
+        return name##_insert_range(dst, name##_len(dst), src, 0, name##_len(src));                                     \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ===== Access & Modification ===== */                                                                            \
+                                                                                                                       \
+    /** @brief Set an element at the specified position (O(n)) */                                                      \
+    static inline LC_UNUSED int name##_set(name *n, size_t pos, T val) {                                               \
+        LC_LIST_DEBUG_NULL(n, #name "_set");                                                                           \
+        LC_LIST_DEBUG_BOUNDS(n, pos, #name "_set");                                                                    \
+        if (size == 0) {                                                                                               \
+            void *ptr;                                                                                                 \
+            memcpy(&ptr, &val, sizeof(void *));                                                                        \
+            return linkedlist_set((LinkedList *)n, pos, ptr);                                                          \
+        }                                                                                                              \
+        return linkedlist_set((LinkedList *)n, pos, &val);                                                             \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get an element at the specified position (O(n), panics if out of bounds) */                             \
+    static inline LC_UNUSED T name##_at(const name *n, size_t pos) {                                                   \
+        LC_LIST_DEBUG_NULL(n, #name "_at");                                                                            \
+        LC_LIST_DEBUG_BOUNDS(n, pos, #name "_at");                                                                     \
+        void *slot = linkedlist_at_mut((LinkedList *)n, pos);                                                          \
+        return *(T *)slot;                                                                                             \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get an element or return default if out of bounds */                                                    \
+    static inline LC_UNUSED T name##_at_or_default(const name *n, size_t pos, T default_val) {                         \
+        LC_LIST_DEBUG_NULL(n, #name "_at_or_default");                                                                 \
+        if (pos >= linkedlist_len((LinkedList *)n)) return default_val;                                                \
+        void *slot = linkedlist_at_mut((LinkedList *)n, pos);                                                          \
+        return slot ? *(T *)slot : default_val;                                                                        \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get the first element (O(1), panics if empty) */                                                        \
+    static inline LC_UNUSED T name##_front(const name *n) {                                                            \
+        LC_LIST_DEBUG_NULL(n, #name "_front");                                                                         \
+        LC_LIST_DEBUG_EMPTY(n, #name "_front");                                                                        \
+        void *slot = linkedlist_front_mut((LinkedList *)n);                                                            \
+        return *(T *)slot;                                                                                             \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get the last element (O(1), panics if empty) */                                                         \
+    static inline LC_UNUSED T name##_back(const name *n) {                                                             \
+        LC_LIST_DEBUG_NULL(n, #name "_back");                                                                          \
+        LC_LIST_DEBUG_EMPTY(n, #name "_back");                                                                         \
+        void *slot = linkedlist_back_mut((LinkedList *)n);                                                             \
+        return *(T *)slot;                                                                                             \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get pointer to element (NULL if out of bounds) */                                                       \
+    static inline LC_UNUSED T *name##_get_ptr(name *n, size_t pos) {                                                   \
+        LC_LIST_DEBUG_NULL(n, #name "_get_ptr");                                                                       \
+        if (pos >= linkedlist_len((LinkedList *)n)) return NULL;                                                       \
+        return (T *)linkedlist_at_mut((LinkedList *)n, pos);                                                           \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ===== Removal ===== */                                                                                          \
+                                                                                                                       \
+    /** @brief Remove and return the first element (O(1)) */                                                           \
+    static inline LC_UNUSED int name##_pop_front(name *n) {                                                            \
+        LC_LIST_DEBUG_NULL(n, #name "_pop_front");                                                                     \
+        return linkedlist_pop_front((LinkedList *)n);                                                                  \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Remove and return the last element (O(1)) */                                                            \
+    static inline LC_UNUSED int name##_pop_back(name *n) {                                                             \
+        LC_LIST_DEBUG_NULL(n, #name "_pop_back");                                                                      \
+        return linkedlist_pop_back((LinkedList *)n);                                                                   \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Remove an element at the specified position (O(n)) */                                                   \
+    static inline LC_UNUSED int name##_remove(name *n, size_t pos) {                                                   \
+        LC_LIST_DEBUG_NULL(n, #name "_remove");                                                                        \
+        return linkedlist_remove((LinkedList *)n, pos);                                                                \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Remove all elements from the list */                                                                    \
+    static inline LC_UNUSED void name##_clear(name *n) {                                                               \
+        LC_LIST_DEBUG_NULL(n, #name "_clear");                                                                         \
+        linkedlist_clear((LinkedList *)n);                                                                             \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ===== Configuration ===== */                                                                                    \
+                                                                                                                       \
+    /** @brief Set the comparator for the list */                                                                      \
+    static inline LC_UNUSED int name##_set_comparator(name *n, lc_Comparator cmp) {                                    \
+        LC_LIST_DEBUG_NULL(n, #name "_set_comparator");                                                                \
+        return linkedlist_set_comparator((LinkedList *)n, cmp);                                                        \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ===== In-place Operations ===== */                                                                              \
+                                                                                                                       \
+    /** @brief Reverse the list in place (O(n)) */                                                                     \
+    static inline LC_UNUSED void name##_reverse_inplace(name *n) {                                                     \
+        LC_LIST_DEBUG_NULL(n, #name "_reverse_inplace");                                                               \
+        linkedlist_reverse_inplace((LinkedList *)n);                                                                   \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Sort the list in place (O(n log n)) */                                                                  \
+    static inline LC_UNUSED int name##_sort(name *n, lc_Comparator cmp) {                                              \
+        LC_LIST_DEBUG_NULL(n, #name "_sort");                                                                          \
+        return linkedlist_sort((LinkedList *)n, cmp);                                                                  \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ===== Copy & View ===== */                                                                                      \
+                                                                                                                       \
+    /** @brief Create a deep copy of the list */                                                                       \
+    static inline LC_UNUSED name *name##_clone(const name *n) {                                                        \
+        LC_LIST_DEBUG_NULL(n, #name "_clone");                                                                         \
+        return (name *)linkedlist_clone((LinkedList *)n);                                                              \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Create a new list with elements in reverse order (O(n)) */                                              \
+    static inline LC_UNUSED name *name##_reverse(const name *n) {                                                      \
+        LC_LIST_DEBUG_NULL(n, #name "_reverse");                                                                       \
+        return (name *)linkedlist_reverse((LinkedList *)n);                                                            \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Extract a sublist as a new list (O(n)) */                                                               \
+    static inline LC_UNUSED name *name##_sublist(const name *n, size_t from, size_t to) {                              \
+        LC_LIST_DEBUG_NULL(n, #name "_sublist");                                                                       \
+        return (name *)linkedlist_sublist((LinkedList *)n, from, to);                                                  \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Swap contents of two typed linked lists */                                                              \
+    static inline LC_UNUSED void name##_swap(name *a, name *b) {                                                       \
+        LC_LIST_DEBUG_NULL(a, #name "_swap");                                                                          \
+        LC_LIST_DEBUG_NULL(b, #name "_swap");                                                                          \
+        name tmp = *a;                                                                                                 \
+        *a = *b;                                                                                                       \
+        *b = tmp;                                                                                                      \
+    }                                                                                                                  \
+                                                                                                                       \
+    /* ===== Iteration ===== */                                                                                        \
+                                                                                                                       \
+    /** @brief Create a forward iterator over the list */                                                              \
+    static inline LC_UNUSED Iterator name##_iter(const name *n) {                                                      \
+        LC_LIST_DEBUG_NULL(n, #name "_iter");                                                                          \
+        return linkedlist_iter((LinkedList *)n);                                                                       \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Create a reverse iterator over the list */                                                              \
+    static inline LC_UNUSED Iterator name##_iter_reversed(const name *n) {                                             \
+        LC_LIST_DEBUG_NULL(n, #name "_iter_reversed");                                                                 \
+        return linkedlist_iter_reversed((LinkedList *)n);                                                              \
     }
 
 #endif /* CONTAIN_TYPED_LINKEDLIST_PDR_H */
