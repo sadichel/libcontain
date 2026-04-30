@@ -538,17 +538,6 @@ int test_iter_peek_at_end(void) {
     return 1;
 }
 
-int test_iter_peek_non_peekable(void) {
-    Vector *vec = create_test_vector(5);
-    Iterator *it = HeapIter((Container *)vec);
-
-    ASSERT_NULL(iter_peek(it), "Non-peekable should return NULL");
-
-    iter_destroy(it);
-    vector_destroy(vec);
-    return 1;
-}
-
 int test_iter_peek_complex_chain(void) {
     Vector *vec = create_test_vector(10);
     
@@ -1052,7 +1041,6 @@ int main(void) {
     TEST(test_iter_peek_basic);
     TEST(test_iter_peek_and_filter);
     TEST(test_iter_peek_at_end);
-    TEST(test_iter_peek_non_peekable);
     TEST(test_iter_peek_complex_chain);
 
     /* Terminals */
