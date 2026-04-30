@@ -540,7 +540,7 @@ Lazy evaluation with decorator pattern. For zero-overhead fused execution, use [
 | `Iterator *iter_take(Iterator *inner, size_t n)` | Limit to N elements |
 | `Iterator *iter_flatten(Iterator *outer)` | Flatten sequence of containers |
 | `Iterator *iter_zip(Iterator *left, Iterator *right, void *(*merge)(...), size_t stride)` | Pair elements |
-| `Iterator *peek_iter(Iterator *inner)` | Make peekable |
+| `Iterator *iter_peekable(Iterator *inner)` | Make peekable |
 
 ### Peek
 

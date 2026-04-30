@@ -153,7 +153,7 @@ iter_destroy(it);
 Look ahead at the next element without consuming it.
 
 ```c
-Iterator *it = peek_iter(HeapIter(vec));
+Iterator *it = iter_peekable(HeapIter(vec));
 const void *next = iter_peek(it);        // Not consumed
 void *item = (void *)iter_next(it);      // Now consume
 ```
