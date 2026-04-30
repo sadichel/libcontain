@@ -769,17 +769,21 @@ static const IteratorVTable ITER_PEEK_OPS = {
 /**
  * @brief Peek at the next element without advancing the iterator
  *
- * Checks if the iterator is a PeekIter type by comparing VTable addresses.
+ * Returns the next element without consuming it. Repeated calls to
+ * iter_peek return the same element until iter_next is called.
  *
- * @param it The iterator to peek into
- * @return Pointer to the next element, or NULL if not peekable or empty.
+ * @param it Peekable iterator created with iter_peekable()
+ *
+ * @return Pointer to the next element, or NULL if the iterator is exhausted.
+ *
+ * @warning Only call on iterators created with iter_peekable().
+ *          Calling on a non-peekable iterator is undefined behaviour.
+ *          Use iter_peekable() to wrap any iterator before peeking.
  */
 static inline const void *iter_peek(Iterator *it) {
-    if (!it || it->ops != &ITER_PEEK_OPS) {
-        return NULL;
-    }
+    if (!it) return NULL;
 
-    PeekIter *p = (PeekIter *)((void *)it);
+    PeekIter *p = (PeekIter *)(void *)it;
     if (!p->has_stashed) {
         p->stashed = iter_next(p->inner);
         if (p->stashed) {
