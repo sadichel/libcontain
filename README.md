@@ -4,6 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![C99](https://img.shields.io/badge/C-99-blue.svg)](https://en.wikipedia.org/wiki/C99)
+[![CI](https://github.com/sadichel/libcontain/actions/workflows/ci.yml/badge.svg)](https://github.com/sadichel/libcontain/actions/workflows/ci.yml)
 
 ## Overview
 
