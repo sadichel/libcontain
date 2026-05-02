@@ -12,7 +12,7 @@ libcontain provides five container types (Vector, Deque, LinkedList, HashSet, Ha
 Unlike other C container libraries, libcontain lets you write:
 
 ```c
-Iterator *it = HeapIter(vec);
+Iterator *it = IntoIter(vec);
 it = iter_filter(it, is_even);
 it = iter_map(it, double_int, sizeof(int));
 Container *result = iter_collect(it);
@@ -152,7 +152,7 @@ Word frequency analysis in 15 lines:
 DECL_HASHMAP_TYPE(const char*, int, 0, sizeof(int), WordCount)
 
 WordCount *freq = WordCount_create();
-Iterator *it = HeapIter((Container*)tokens);
+Iterator *it = IntoIter((Container*)tokens);
 it = iter_filter(it, is_not_stopword);
 iter_fold(it, freq, count_words);
 

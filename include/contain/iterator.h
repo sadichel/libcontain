@@ -22,13 +22,13 @@
  *   // Filter even numbers, double them, take first 10, collect into vector
  *   Iterator *it = iter_take(
  *       iter_map(
- *           iter_filter(HeapIter(vec), is_even),
+ *           iter_filter(IntoIter(vec), is_even),
  *           double_int, sizeof(int)),
  *       10);
  *   Container *result = iter_collect(it);
  *
  *   // Linear usage
- *   Iterator *it = HeapIter(vec);
+ *   Iterator *it = IntoIter(vec);
  *   it = iter_filter(it, is_even);
  *   it = iter_map(it, double_int, sizeof(int));
  *   it = iter_take(it, 10);
@@ -51,8 +51,8 @@
  *   #include "container.h"
  *   #include "iterator.h"
  *
- *   // Use HeapIter() to create a heap-allocated iterator for decorators
- *   Iterator *it = iter_filter(HeapIter(vec), predicate);
+ *   // Use IntoIter() to create a heap-allocated iterator for decorators
+ *   Iterator *it = iter_filter(IntoIter(vec), predicate);
  *   const void *e;
  *   while ((e = iter_next(it))) { process(e); }
  *   iter_destroy(it);
@@ -172,7 +172,7 @@ static const IteratorVTable ITER_FILTER_OPS = {
  *   bool is_even(const Container *c, const void *e) {
  *       return *(const int *)e % 2 == 0;
  *   }
- *   Iterator *it = iter_filter(HeapIter(vec), is_even);
+ *   Iterator *it = iter_filter(IntoIter(vec), is_even);
  *   const int *e;
  *   while ((e = iter_next(it))) { printf("%d\n", *e); }
  *   iter_destroy(it);
@@ -278,7 +278,7 @@ static const IteratorVTable ITER_MAP_OPS = {
  *           return buf;
  *       }
  *       // Use with stride = max_expected_string_length + 1
- *       Iterator *it = iter_map(HeapIter(str_vec), str_to_upper, 256);
+ *       Iterator *it = iter_map(IntoIter(str_vec), str_to_upper, 256);
  *       @endcode
  *
  * @warning The caller must consume the result before the next call to iter_next,
@@ -295,7 +295,7 @@ static const IteratorVTable ITER_MAP_OPS = {
  *       *(int *)buf = *(const int *)e * 2;
  *       return buf;
  *   }
- *   Iterator *it = iter_map(HeapIter(vec), double_int, sizeof(int));
+ *   Iterator *it = iter_map(IntoIter(vec), double_int, sizeof(int));
  *   const int *e;
  *   while ((e = iter_next(it))) { printf("%d\n", *e); }
  *   iter_destroy(it);
@@ -396,7 +396,7 @@ static const IteratorVTable ITER_SKIP_OPS = {
  *
  * @par Example
  * @code
- *   Iterator *it = iter_skip(HeapIter(vec), 3);
+ *   Iterator *it = iter_skip(IntoIter(vec), 3);
  *   const void *e;
  *   while ((e = iter_next(it))) { process(e); }
  *   iter_destroy(it);
@@ -475,7 +475,7 @@ static const IteratorVTable ITER_TAKE_OPS = {
  *
  * @par Example
  * @code
- *   Iterator *it = iter_take(HeapIter(vec), 5);
+ *   Iterator *it = iter_take(IntoIter(vec), 5);
  *   const void *e;
  *   while ((e = iter_next(it))) { process(e); }
  *   iter_destroy(it);
@@ -579,7 +579,7 @@ static const IteratorVTable ITER_FLATTEN_OPS = {
  * @par Example
  * @code
  *   // vec contains Container* pointers to multiple HashSet instances
- *   Iterator *it = iter_flatten(HeapIter(vec));
+ *   Iterator *it = iter_flatten(IntoIter(vec));
  *   const int *e;
  *   while ((e = iter_next(it))) { printf("%d\n", *e); }
  *   iter_destroy(it);
@@ -687,7 +687,7 @@ static const IteratorVTable ITER_ZIP_OPS = {
  *       ((Pair *)buf)->b = *(const int *)b;
  *       return buf;
  *   }
- *   Iterator *it = iter_zip(HeapIter(va), HeapIter(vb),
+ *   Iterator *it = iter_zip(IntoIter(va), IntoIter(vb),
  *                           make_pair, sizeof(Pair));
  *   Pair *p;
  *   while ((p = iter_next(it))) { printf("%d+%d\n", p->a, p->b); }
@@ -863,7 +863,7 @@ static inline Iterator *iter_peekable(Iterator *inner) {
  *
  * @par Example
  * @code
- *   Iterator *it = HeapIter(vec);
+ *   Iterator *it = IntoIter(vec);
  *   iter_drop(it, 5);  // Skip first 5 elements
  *   void *e;
  *   while ((e = iter_next(it))) { process(e); }
@@ -892,7 +892,7 @@ static inline void iter_drop(Iterator *it, size_t n) {
  *   bool has_negative(const Container *c, const void *e) {
  *       return *(const int *)e < 0;
  *   }
- *   if (iter_any(HeapIter(vec), has_negative)) {
+ *   if (iter_any(IntoIter(vec), has_negative)) {
  *       printf("Vector contains negative numbers\n");
  *   }
  * @endcode
@@ -928,7 +928,7 @@ static inline bool iter_any(Iterator *it, bool (*pred)(const Container *, const 
  *   bool is_positive(const Container *c, const void *e) {
  *       return *(const int *)e > 0;
  *   }
- *   if (iter_all(HeapIter(vec), is_positive)) {
+ *   if (iter_all(IntoIter(vec), is_positive)) {
  *       printf("All elements are positive\n");
  *   }
  * @endcode
@@ -960,7 +960,7 @@ static inline bool iter_all(Iterator *it, bool (*pred)(const Container *, const 
  * @code
  *   // Count elements matching a predicate
  *   size_t even_count = iter_count(
- *       iter_filter(HeapIter(vec), is_even));
+ *       iter_filter(IntoIter(vec), is_even));
  * @endcode
  */
 static inline size_t iter_count(Iterator *it) {
@@ -987,7 +987,7 @@ static inline size_t iter_count(Iterator *it) {
  *   void print_int(const Container *c, const void *e) {
  *       printf("%d\n", *(const int *)e);
  *   }
- *   iter_for_each(HeapIter(vec), print_int);
+ *   iter_for_each(IntoIter(vec), print_int);
  * @endcode
  */
 static inline void iter_for_each(Iterator *it, void (*f)(const Container *, const void *)) {
@@ -1014,11 +1014,11 @@ static inline void iter_for_each(Iterator *it, void (*f)(const Container *, cons
  *
  * @par Example
  * @code
- *   int *first_even = (int *)iter_find(HeapIter(vec), is_even);
+ *   int *first_even = (int *)iter_find(IntoIter(vec), is_even);
  *   if (first_even) printf("First even: %d\n", *first_even);
  *
  *   // Get first element without predicate
- *   int *first = (int *)iter_find(HeapIter(vec), NULL);
+ *   int *first = (int *)iter_find(IntoIter(vec), NULL);
  * @endcode
  */
 static inline const void *iter_find(Iterator *it, bool (*pred)(const Container *, const void *)) {
@@ -1057,7 +1057,7 @@ static inline const void *iter_find(Iterator *it, bool (*pred)(const Container *
  *       return acc;
  *   }
  *   int sum = 0;
- *   iter_fold(HeapIter(vec), &sum, add);
+ *   iter_fold(IntoIter(vec), &sum, add);
  *   printf("Sum: %d\n", sum);
  * @endcode
  */
@@ -1087,7 +1087,7 @@ static inline void *iter_fold(Iterator *it, void *acc, void *(*f)(const Containe
  * @par Example
  * @code
  *   Container *result = iter_collect(
- *       iter_filter(HeapIter(vec), is_even));
+ *       iter_filter(IntoIter(vec), is_even));
  *   if (result) {
  *       printf("Collected %zu even numbers\n", container_len(result));
  *       container_destroy(result);
@@ -1142,7 +1142,7 @@ static inline Container *iter_collect(Iterator *it) {
  * @par Example
  * @code
  *   size_t n = iter_collect_in(
- *       iter_filter(HeapIter(vec), is_even), existing_set);
+ *       iter_filter(IntoIter(vec), is_even), existing_set);
  *   printf("Inserted %zu elements\n", n);
  * @endcode
  */

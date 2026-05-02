@@ -526,8 +526,8 @@ Lazy evaluation with decorator pattern. For zero-overhead fused execution, use [
 |----------|-------------|
 | `Iterator Iter(const Container *c)` | Stack-allocated forward iterator |
 | `Iterator IterReverse(const Container *c)` | Stack-allocated reverse iterator |
-| `Iterator *HeapIter(Container *c)` | Heap-allocated forward iterator |
-| `Iterator *HeapIterReverse(Container *c)` | Heap-allocated reverse iterator |
+| `Iterator *IntoIter(Container *c)` | Heap-allocated forward iterator (transferable ownership) |
+| `Iterator *IntoIterReverse(Container *c)` | Heap-allocated reverse iterator (transferable ownership) |
 | `void iter_destroy(Iterator *it)` | Destroy iterator |
 
 ### Decorators

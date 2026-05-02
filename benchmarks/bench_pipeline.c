@@ -96,7 +96,7 @@ static void sum_sink(const Container *ctx, const void *item) {
 
 static void bench_iterator_filter_only(int n) {
     Vector *vec = create_test_vector(n);
-    Iterator *it = iter_filter(HeapIter((Container *)vec), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), is_even);
     while (iter_next(it)) {}
     iter_destroy(it);
     vector_destroy(vec);
@@ -105,7 +105,7 @@ static void bench_iterator_filter_only(int n) {
 static void bench_iterator_filter_map(int n) {
     Vector *vec = create_test_vector(n);
     Iterator *it = iter_map(
-        iter_filter(HeapIter((Container *)vec), is_even),
+        iter_filter(IntoIter((Container *)vec), is_even),
         double_int, sizeof(int));
     while (iter_next(it)) {}
     iter_destroy(it);
@@ -116,7 +116,7 @@ static void bench_iterator_filter_map_take(int n) {
     Vector *vec = create_test_vector(n);
     Iterator *it = iter_take(
         iter_map(
-            iter_filter(HeapIter((Container *)vec), is_even),
+            iter_filter(IntoIter((Container *)vec), is_even),
             double_int, sizeof(int)),
         10);
     while (iter_next(it)) {}
@@ -129,7 +129,7 @@ static void bench_iterator_full_pipeline(int n) {
     Iterator *it = iter_take(
         iter_map(
             iter_filter(
-                iter_skip(HeapIter((Container *)vec), 10),
+                iter_skip(IntoIter((Container *)vec), 10),
                 is_even),
             square_int, sizeof(int)),
         10);
@@ -140,7 +140,7 @@ static void bench_iterator_full_pipeline(int n) {
 
 static void bench_iterator_fold(int n) {
     Vector *vec = create_test_vector(n);
-    Iterator *it = iter_filter(HeapIter((Container *)vec), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), is_even);
     int sum = 0;
     iter_fold(it, &sum, sum_fold);
     sink += sum;
@@ -149,7 +149,7 @@ static void bench_iterator_fold(int n) {
 
 static void bench_iterator_collect(int n) {
     Vector *vec = create_test_vector(n);
-    Iterator *it = iter_filter(HeapIter((Container *)vec), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), is_even);
     Container *result = iter_collect(it);
     sink += container_len(result);
     container_destroy(result);
@@ -158,7 +158,7 @@ static void bench_iterator_collect(int n) {
 
 static void bench_iterator_for_each(int n) {
     Vector *vec = create_test_vector(n);
-    Iterator *it = iter_filter(HeapIter((Container *)vec), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), is_even);
     iter_for_each(it, sum_sink);
     vector_destroy(vec);
 }
@@ -167,7 +167,7 @@ static void bench_iterator_multiple_filters(int n) {
     Vector *vec = create_test_vector(n);
     Iterator *it = iter_filter(
         iter_filter(
-            iter_filter(HeapIter((Container *)vec), is_even),
+            iter_filter(IntoIter((Container *)vec), is_even),
             is_even),
         is_even);
     while (iter_next(it)) {}

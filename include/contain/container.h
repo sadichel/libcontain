@@ -451,7 +451,7 @@ static const IteratorVTable ITER_HEAP_OPS = {
  *
  * @note The returned Iterator is a value type. Passing it to a decorator
  *       constructor (iter_filter, iter_map, etc.) requires taking its address
- *       or heap-allocating it first; see HeapIter().
+ *       or heap-allocating it first; see IntoIter().
  */
 static inline Iterator Iter(const Container *c) {
     LC_DEBUG_CHECK(c != NULL, "Iter() - NULL container");
@@ -491,7 +491,7 @@ static inline Iterator IterReverse(const Container *c) {
 /**
  * @brief Create a heap-allocated forward iterator over a container
  *
- * Unlike Iter() which returns a stack-allocated value type, HeapIter()
+ * Unlike Iter() which returns a stack-allocated value type, IntoIter()
  * returns a pointer to a heap-allocated Iterator that can be passed to
  * functions that need to take ownership (such as iterator decorators).
  *
@@ -502,14 +502,14 @@ static inline Iterator IterReverse(const Container *c) {
  *
  * @par Example
  * @code
- *   Iterator *it = HeapIter(vec);
+ *   Iterator *it = IntoIter(vec);
  *   void *e;
  *   while ((e = iter_next(it))) { process(e); }
  *   iter_destroy(it);
  * @endcode
  */
-static inline Iterator *HeapIter(Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "HeapIter() - NULL container");
+static inline Iterator *IntoIter(Container *c) {
+    LC_DEBUG_CHECK(c != NULL, "IntoIter() - NULL container");
     Iterator *it = (Iterator *)malloc(sizeof(Iterator));
     if (!it) return NULL;
     *it = (Iterator){
@@ -523,7 +523,7 @@ static inline Iterator *HeapIter(Container *c) {
 /**
  * @brief Create a heap-allocated reverse iterator over a container
  *
- * Similar to HeapIter() but iterates from the last element to the first.
+ * Similar to IntoIter() but iterates from the last element to the first.
  *
  * @param c Container to iterate over (must outlive the iterator)
  * @return Heap-allocated Iterator pointer, or NULL on allocation failure
@@ -532,14 +532,14 @@ static inline Iterator *HeapIter(Container *c) {
  *
  * @par Example
  * @code
- *   Iterator *it = HeapIterReverse(vec);
+ *   Iterator *it = IntoIterReverse(vec);
  *   void *e;
  *   while ((e = iter_next(it))) { process(e); }
  *   iter_destroy(it);
  * @endcode
  */
-static inline Iterator *HeapIterReverse(Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "HeapIterReverse() - NULL container");
+static inline Iterator *IntoIterReverse(Container *c) {
+    LC_DEBUG_CHECK(c != NULL, "IntoIterReverse() - NULL container");
     Iterator *it = (Iterator *)malloc(sizeof(Iterator));
     if (!it) return NULL;
     *it = (Iterator){

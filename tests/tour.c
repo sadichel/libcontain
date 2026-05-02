@@ -758,7 +758,7 @@ static void demo_iterator_pipelines(void) {
 
     printf("Original: \"%s\"\n", text);
 
-    Iterator *it = HeapIter((Container *)chars);
+    Iterator *it = IntoIter((Container *)chars);
     it = iter_filter(it, is_alpha_char);
     it = iter_map(it, char_to_lower, sizeof(char));
 
@@ -787,7 +787,7 @@ static void demo_iterator_pipelines(void) {
     }
     printf("\n");
 
-    it = HeapIter((Container *)numbers);
+    it = IntoIter((Container *)numbers);
     it = iter_filter(it, is_even);
     it = iter_map(it, double_int, sizeof(int));
     it = iter_take(it, 5);
@@ -801,29 +801,29 @@ static void demo_iterator_pipelines(void) {
     }
     printf("\n");
 
-    it = HeapIter((Container *)numbers);
+    it = IntoIter((Container *)numbers);
     it = iter_filter(it, is_gt_50);
     size_t count = iter_count(it);
     printf("Numbers > 50: %zu\n", count);
 
-    it = HeapIter((Container *)numbers);
+    it = IntoIter((Container *)numbers);
     bool has_gt_50 = iter_any(it, is_gt_50);
     printf("Any > 50? %s\n", has_gt_50 ? "yes" : "no");
 
-    it = HeapIter((Container *)numbers);
+    it = IntoIter((Container *)numbers);
     bool all_gt_0 = iter_all(it, NULL);
     printf("Any elements? %s\n", all_gt_0 ? "yes" : "no");
 
-    it = HeapIter((Container *)numbers);
+    it = IntoIter((Container *)numbers);
     int sum = 0;
     iter_fold(it, &sum, sum_ints);
     printf("Sum of all numbers: %d\n", sum);
 
-    it = HeapIter((Container *)numbers);
+    it = IntoIter((Container *)numbers);
     const int *val = iter_find(it, is_even);
     printf("Find even: %d\n", *val);
 
-    it = HeapIter((Container *)numbers);
+    it = IntoIter((Container *)numbers);
     it = iter_peekable(it);
     val = iter_peek(it);
     printf("Peek first: %d\n", *(const int *)val);
@@ -850,7 +850,7 @@ static void demo_iterator_pipelines(void) {
         printf("  %s\n", StringVector_at(strs, i));
     }
 
-    it = HeapIter((Container *)strs);
+    it = IntoIter((Container *)strs);
     it = iter_map(it, str_remove_punct, 256);
     it = iter_map(it, str_to_upper, 256);
 
@@ -959,7 +959,7 @@ static void demo_polymorphism(void) {
     print_container((Container *)vec, "Vector");
 
     int total = 0;
-    iter_fold(HeapIter((Container *)vec), &total, sum_ints);
+    iter_fold(IntoIter((Container *)vec), &total, sum_ints);
     printf("Sum of vector: %d\n", total);
 
     IntVector *empty = IntVector_instance(vec);
@@ -999,7 +999,7 @@ static void demo_word_frequency(void) {
 
     WordCountMap *freq = WordCountMap_create();
 
-    Iterator *it = HeapIter((Container *)tokens);
+    Iterator *it = IntoIter((Container *)tokens);
     it = iter_filter(it, is_not_stop_word);
     iter_fold(it, freq, fold_count);
 

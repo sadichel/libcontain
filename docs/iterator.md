@@ -22,7 +22,7 @@ while ((item = iter_next(&it))) {
 Stack-allocated iterators (`Iter`/`IterReverse`) can be used directly, but must be heap allocated for pipeline composition:
 
 ```c
-Iterator *it = HeapIter((Container *)vec);
+Iterator *it = IntoIter((Container *)vec);
 it = iter_filter(it, is_even);
 it = iter_map(it, double_int, sizeof(int));
 
@@ -42,7 +42,7 @@ bool is_even(const Container *ctx, const void *item) {
     return *(const int *)item % 2 == 0;
 }
 
-Iterator *it = iter_filter(HeapIter(vec), is_even);
+Iterator *it = iter_filter(IntoIter(vec), is_even);
 ```
 
 ### Map
@@ -55,7 +55,7 @@ void *double_int(const Container *ctx, const void *item, void *buf) {
     return buf;
 }
 
-Iterator *it = iter_map(HeapIter(vec), double_int, sizeof(int));
+Iterator *it = iter_map(IntoIter(vec), double_int, sizeof(int));
 ```
 
 ### Skip
@@ -63,7 +63,7 @@ Iterator *it = iter_map(HeapIter(vec), double_int, sizeof(int));
 Discard the first N elements.
 
 ```c
-Iterator *it = iter_skip(HeapIter(vec), 10);
+Iterator *it = iter_skip(IntoIter(vec), 10);
 ```
 
 ### Take
@@ -71,7 +71,7 @@ Iterator *it = iter_skip(HeapIter(vec), 10);
 Limit results to at most N elements.
 
 ```c
-Iterator *it = iter_take(HeapIter(vec), 20);
+Iterator *it = iter_take(IntoIter(vec), 20);
 ```
 
 ### Flatten
@@ -91,7 +91,7 @@ for (int i = 0; i < 5; i++) {
 }
 
 // Flatten: yields all 50 ints sequentially
-Iterator *it = iter_flatten(HeapIter((Container *)outer));
+Iterator *it = iter_flatten(IntoIter((Container *)outer));
 const int *val;
 
 while ((val = iter_next(it))) {
@@ -129,8 +129,8 @@ Vector *vec1 = create_int_range(1, 5);   // 1, 2, 3, 4, 5
 Vector *vec2 = create_int_range(10, 14); // 10, 11, 12, 13, 14
 
 // Zip them together
-Iterator *it = iter_zip(HeapIter((Container *)vec1),
-                        HeapIter((Container *)vec2),
+Iterator *it = iter_zip(IntoIter((Container *)vec1),
+                        IntoIter((Container *)vec2),
                         make_pair, sizeof(Pair));
 
 const Pair *pair;
@@ -153,7 +153,7 @@ iter_destroy(it);
 Look ahead at the next element without consuming it.
 
 ```c
-Iterator *it = iter_peekable(HeapIter(vec));
+Iterator *it = iter_peekable(IntoIter(vec));
 const void *next = iter_peek(it);        // Not consumed
 void *item = (void *)iter_next(it);      // Now consume
 ```
@@ -241,7 +241,7 @@ iter_drop(it, 10);  // Skip first 10 elements, iterator remains valid
 
 ### Filter → Map → Take
 ```c
-Iterator *it = HeapIter(vec);
+Iterator *it = IntoIter(vec);
 it = iter_filter(it, is_even);
 it = iter_map(it, double_int, sizeof(int));
 it = iter_take(it, 10);
@@ -252,7 +252,7 @@ Container *result = iter_collect(it);
 ### Filter → Fold
 ```c
 int sum = 0;
-Iterator *it = HeapIter(vec);
+Iterator *it = IntoIter(vec);
 it = iter_filter(it, is_even);
 
 iter_fold(it, &sum, sum_int);
@@ -260,7 +260,7 @@ iter_fold(it, &sum, sum_int);
 
 ### Flatten → Filter → Collect
 ```c
-Iterator *it = HeapIter((Container *)outer);
+Iterator *it = IntoIter((Container *)outer);
 it = iter_flatten(it);
 it = iter_filter(it, is_even);
 
@@ -269,7 +269,7 @@ Container *evens = iter_collect(it);
 
 ### Zip → Map → Collect
 ```c
-Iterator *it = iter_zip(HeapIter(vec1), HeapIter(vec2), sum_pair, sizeof(int));
+Iterator *it = iter_zip(IntoIter(vec1), IntoIter(vec2), sum_pair, sizeof(int));
 
 Container *sums = iter_collect(it);
 ```
@@ -284,7 +284,7 @@ void *str_to_upper(const Container *ctx, const void *item, void *buf) {
     return buf;
 }
 
-Iterator *it = iter_map(HeapIter((Container *)str_vec), str_to_upper, 256);
+Iterator *it = iter_map(IntoIter((Container *)str_vec), str_to_upper, 256);
 Container *result = iter_collect(it);
 ```
 
@@ -299,7 +299,7 @@ Container *result = iter_collect(it);
 | `iter_drop` | Does **not** take ownership |
 
 ```c
-Iterator *it = HeapIter(vec);
+Iterator *it = IntoIter(vec);
 Iterator *it2 = iter_filter(it, is_even);   // Takes ownership, 'it' is now invalid
 
 // iter_next(it);  ❌ INVALID

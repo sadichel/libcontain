@@ -51,7 +51,7 @@ int main(void) {
 
     /* Count frequencies */
     WordCount *freq = WordCount_create();
-    Iterator *it = HeapIter((Container *)tokens);
+    Iterator *it = IntoIter((Container *)tokens);
     it = iter_filter(it, is_not_stopword);
     iter_fold(it, freq, count_word);
 
@@ -160,7 +160,7 @@ int main(void) {
     Vector *vec = create_int_range(0, 1000);
 
     /* Build iterator pipeline */
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     it = iter_filter(it, is_even);
     it = iter_map(it, double_int, sizeof(int));
     it = iter_take(it, 100);

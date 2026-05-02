@@ -118,7 +118,7 @@ static void *make_pair(const Container *c, const void *item, void *buf) {
 
 int test_iter_filter_basic(void) {
     Vector *vec = create_test_vector(10);
-    Iterator *it = iter_filter(HeapIter((Container *)vec), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), is_even);
     ASSERT_NOT_NULL(it, "filter iterator creation failed");
 
     int expected[] = {0, 2, 4, 6, 8};
@@ -137,7 +137,7 @@ int test_iter_filter_basic(void) {
 
 int test_iter_filter_empty(void) {
     Vector *vec = vector_create(sizeof(int));
-    Iterator *it = iter_filter(HeapIter((Container *)vec), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), is_even);
     ASSERT_NOT_NULL(it, "filter iterator creation failed");
     ASSERT_NULL(iter_next(it), "next on empty should be NULL");
     iter_destroy(it);
@@ -147,7 +147,7 @@ int test_iter_filter_empty(void) {
 
 int test_iter_filter_all_match(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = iter_filter(HeapIter((Container *)vec), is_positive);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), is_positive);
     ASSERT_NOT_NULL(it, "filter iterator creation failed");
 
     size_t count = 0;
@@ -161,7 +161,7 @@ int test_iter_filter_all_match(void) {
 
 int test_iter_filter_no_match(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = iter_filter(HeapIter((Container *)vec), is_negative);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), is_negative);
     ASSERT_NOT_NULL(it, "filter iterator creation failed");
     ASSERT_NULL(iter_next(it), "next should return NULL when no match");
     iter_destroy(it);
@@ -171,7 +171,7 @@ int test_iter_filter_no_match(void) {
 
 int test_iter_filter_null_predicate(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = iter_filter(HeapIter((Container *)vec), NULL);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), NULL);
     ASSERT_NOT_NULL(it, "filter iterator with NULL predicate should pass through");
     size_t count = 0;
     while (iter_next(it)) count++;
@@ -189,7 +189,7 @@ int test_iter_filter_null_predicate(void) {
 
 int test_iter_map_basic(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = iter_map(HeapIter((Container *)vec), double_int, sizeof(int));
+    Iterator *it = iter_map(IntoIter((Container *)vec), double_int, sizeof(int));
     ASSERT_NOT_NULL(it, "map iterator creation failed");
 
     int expected[] = {0, 2, 4, 6, 8};
@@ -208,7 +208,7 @@ int test_iter_map_basic(void) {
 
 int test_iter_map_empty(void) {
     Vector *vec = vector_create(sizeof(int));
-    Iterator *it = iter_map(HeapIter((Container *)vec), double_int, sizeof(int));
+    Iterator *it = iter_map(IntoIter((Container *)vec), double_int, sizeof(int));
     ASSERT_NOT_NULL(it, "map iterator creation failed");
     ASSERT_NULL(iter_next(it), "next on empty should be NULL");
     iter_destroy(it);
@@ -218,7 +218,7 @@ int test_iter_map_empty(void) {
 
 int test_iter_map_stride_zero(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = iter_map(HeapIter((Container *)vec), double_int, 0);
+    Iterator *it = iter_map(IntoIter((Container *)vec), double_int, 0);
     ASSERT_NULL(it, "map with stride 0 should fail");
     vector_destroy(vec);
     return 1;
@@ -226,7 +226,7 @@ int test_iter_map_stride_zero(void) {
 
 int test_iter_map_null_mapper(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = iter_map(HeapIter((Container *)vec), NULL, sizeof(int));
+    Iterator *it = iter_map(IntoIter((Container *)vec), NULL, sizeof(int));
     ASSERT_NOT_NULL(it, "map with NULL mapper should pass through");
     size_t count = 0;
     while (iter_next(it)) count++;
@@ -243,7 +243,7 @@ int test_iter_map_null_mapper(void) {
 int test_iter_filter_map_chain(void) {
     Vector *vec = create_test_vector(10);
     Iterator *it = iter_map(
-        iter_filter(HeapIter((Container *)vec), is_even),
+        iter_filter(IntoIter((Container *)vec), is_even),
         double_int, sizeof(int));
     ASSERT_NOT_NULL(it, "chained filter+map creation failed");
 
@@ -264,7 +264,7 @@ int test_iter_filter_map_chain(void) {
 int test_iter_map_filter_chain(void) {
     Vector *vec = create_test_vector(10);
     Iterator *it = iter_filter(
-        iter_map(HeapIter((Container *)vec), double_int, sizeof(int)),
+        iter_map(IntoIter((Container *)vec), double_int, sizeof(int)),
         is_even);
     ASSERT_NOT_NULL(it, "chained map+filter creation failed");
 
@@ -288,7 +288,7 @@ int test_iter_map_filter_chain(void) {
 
 int test_iter_skip_basic(void) {
     Vector *vec = create_test_vector(10);
-    Iterator *it = iter_skip(HeapIter((Container *)vec), 3);
+    Iterator *it = iter_skip(IntoIter((Container *)vec), 3);
     ASSERT_NOT_NULL(it, "skip iterator creation failed");
 
     int expected[] = {3, 4, 5, 6, 7, 8, 9};
@@ -307,7 +307,7 @@ int test_iter_skip_basic(void) {
 
 int test_iter_skip_all(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = iter_skip(HeapIter((Container *)vec), 10);
+    Iterator *it = iter_skip(IntoIter((Container *)vec), 10);
     ASSERT_NOT_NULL(it, "skip iterator creation failed");
     ASSERT_NULL(iter_next(it), "skip beyond length should return NULL");
     iter_destroy(it);
@@ -317,7 +317,7 @@ int test_iter_skip_all(void) {
 
 int test_iter_skip_zero(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = iter_skip(HeapIter((Container *)vec), 0);
+    Iterator *it = iter_skip(IntoIter((Container *)vec), 0);
     ASSERT_NOT_NULL(it, "skip zero should succeed");
 
     size_t count = 0;
@@ -335,7 +335,7 @@ int test_iter_skip_zero(void) {
 
 int test_iter_take_basic(void) {
     Vector *vec = create_test_vector(10);
-    Iterator *it = iter_take(HeapIter((Container *)vec), 3);
+    Iterator *it = iter_take(IntoIter((Container *)vec), 3);
     ASSERT_NOT_NULL(it, "take iterator creation failed");
 
     int expected[] = {0, 1, 2};
@@ -354,7 +354,7 @@ int test_iter_take_basic(void) {
 
 int test_iter_take_zero(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = iter_take(HeapIter((Container *)vec), 0);
+    Iterator *it = iter_take(IntoIter((Container *)vec), 0);
     ASSERT_NOT_NULL(it, "take zero should succeed");
     ASSERT_NULL(iter_next(it), "take zero should return NULL immediately");
     iter_destroy(it);
@@ -364,7 +364,7 @@ int test_iter_take_zero(void) {
 
 int test_iter_take_more_than_length(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = iter_take(HeapIter((Container *)vec), 10);
+    Iterator *it = iter_take(IntoIter((Container *)vec), 10);
     ASSERT_NOT_NULL(it, "take more than length should succeed");
 
     size_t count = 0;
@@ -383,7 +383,7 @@ int test_iter_take_more_than_length(void) {
 int test_iter_skip_take_chain(void) {
     Vector *vec = create_test_vector(10);
     Iterator *it = iter_take(
-        iter_skip(HeapIter((Container *)vec), 2),
+        iter_skip(IntoIter((Container *)vec), 2),
         4);
     ASSERT_NOT_NULL(it, "skip+take chain creation failed");
 
@@ -415,7 +415,7 @@ int test_iter_flatten_basic(void) {
     vector_push(outer, &inner2);
     vector_push(outer, &inner3);
 
-    Iterator *it = iter_flatten(HeapIter((Container *)outer));
+    Iterator *it = iter_flatten(IntoIter((Container *)outer));
     ASSERT_NOT_NULL(it, "flatten iterator creation failed");
 
     int expected[] = {0, 1, 2, 0, 1, 0, 1, 2, 3};
@@ -458,8 +458,8 @@ int test_iter_zip_basic(void) {
     Vector *vec1 = create_test_vector(5);
     Vector *vec2 = create_test_vector(5);
 
-    Iterator *it = iter_zip(HeapIter((Container *)vec1),
-                            HeapIter((Container *)vec2),
+    Iterator *it = iter_zip(IntoIter((Container *)vec1),
+                            IntoIter((Container *)vec2),
                             make_int_pair, sizeof(Pair));
     ASSERT_NOT_NULL(it, "zip iterator creation failed");
 
@@ -484,7 +484,7 @@ int test_iter_zip_basic(void) {
 
 int test_iter_peek_basic(void) {
     Vector *vec = create_test_vector(5); // [0, 1, 2, 3, 4]
-    Iterator *it = iter_peekable(HeapIter((Container *)vec));
+    Iterator *it = iter_peekable(IntoIter((Container *)vec));
     ASSERT_NOT_NULL(it, "iter_peekable creation failed");
 
     const int *p1 = (const int *)iter_peek(it);
@@ -509,7 +509,7 @@ int test_iter_peek_basic(void) {
 int test_iter_peek_and_filter(void) {
     Vector *vec = create_test_vector(10);
     // [0, 2, 4, 6, 8]
-    Iterator *it = iter_peekable(iter_filter(HeapIter((Container *)vec), is_even));
+    Iterator *it = iter_peekable(iter_filter(IntoIter((Container *)vec), is_even));
 
     const int *p1 = (const int *)iter_peek(it);
     ASSERT_EQUAL(*p1, 0, "Filter-peek failed");
@@ -527,7 +527,7 @@ int test_iter_peek_and_filter(void) {
 
 int test_iter_peek_at_end(void) {
     Vector *vec = create_test_vector(1);
-    Iterator *it = iter_peekable(HeapIter((Container *)vec));
+    Iterator *it = iter_peekable(IntoIter((Container *)vec));
 
     iter_next(it);
     ASSERT_NULL(iter_peek(it), "Peek at end should be NULL");
@@ -541,7 +541,7 @@ int test_iter_peek_at_end(void) {
 int test_iter_peek_complex_chain(void) {
     Vector *vec = create_test_vector(10);
     
-    Iterator *filt = iter_filter(HeapIter((Container *)vec), is_even);
+    Iterator *filt = iter_filter(IntoIter((Container *)vec), is_even);
     Iterator *peekable = iter_peekable(filt);
     Iterator *final = iter_map(peekable, add_ten, sizeof(int));
 
@@ -562,7 +562,7 @@ int test_iter_peek_complex_chain(void) {
 
 int test_iter_count_basic(void) {
     Vector *vec = create_test_vector(10);
-    Iterator *it = iter_filter(HeapIter((Container *)vec), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), is_even);
     size_t count = iter_count(it);
     ASSERT_EQUAL(count, 5, "iter_count wrong");
     vector_destroy(vec);
@@ -571,7 +571,7 @@ int test_iter_count_basic(void) {
 
 int test_iter_count_empty(void) {
     Vector *vec = vector_create(sizeof(int));
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     size_t count = iter_count(it);
     ASSERT_EQUAL(count, 0, "iter_count on empty should be 0");
     vector_destroy(vec);
@@ -584,7 +584,7 @@ int test_iter_count_empty(void) {
 
 int test_iter_any_true(void) {
     Vector *vec = create_mixed_vector(10);
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     bool result = iter_any(it, is_positive);
     ASSERT_TRUE(result, "iter_any should return true");
     vector_destroy(vec);
@@ -593,7 +593,7 @@ int test_iter_any_true(void) {
 
 int test_iter_any_false(void) {
     Vector *vec = create_test_vector(10);
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     bool result = iter_any(it, is_negative);
     ASSERT_FALSE(result, "iter_any should return false");
     vector_destroy(vec);
@@ -602,7 +602,7 @@ int test_iter_any_false(void) {
 
 int test_iter_any_empty(void) {
     Vector *vec = vector_create(sizeof(int));
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     bool result = iter_any(it, is_positive);
     ASSERT_FALSE(result, "iter_any on empty should be false");
     vector_destroy(vec);
@@ -611,7 +611,7 @@ int test_iter_any_empty(void) {
 
 int test_iter_any_null_predicate(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     bool result = iter_any(it, NULL);
     ASSERT_TRUE(result, "iter_any with NULL predicate should return true if any element exists");
     vector_destroy(vec);
@@ -624,7 +624,7 @@ int test_iter_any_null_predicate(void) {
 
 int test_iter_all_true(void) {
     Vector *vec = create_test_vector(10);
-    Iterator *it = iter_skip(HeapIter((Container *)vec), 1);
+    Iterator *it = iter_skip(IntoIter((Container *)vec), 1);
     bool result = iter_all(it, is_positive);
     ASSERT_TRUE(result, "iter_all should return true for positive numbers");
     vector_destroy(vec);
@@ -633,7 +633,7 @@ int test_iter_all_true(void) {
 
 int test_iter_all_false(void) {
     Vector *vec = create_mixed_vector(10);
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     bool result = iter_all(it, is_positive);
     ASSERT_FALSE(result, "iter_all should return false");
     vector_destroy(vec);
@@ -642,7 +642,7 @@ int test_iter_all_false(void) {
 
 int test_iter_all_empty(void) {
     Vector *vec = vector_create(sizeof(int));
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     bool result = iter_all(it, is_positive);
     ASSERT_TRUE(result, "iter_all on empty should be vacuously true");
     vector_destroy(vec);
@@ -656,7 +656,7 @@ int test_iter_all_empty(void) {
 int test_iter_for_each_basic(void) {
     Vector *vec = create_test_vector(10);
     sink = 0;
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     iter_for_each(it, sum_sink);
     ASSERT_EQUAL(sink, 45, "iter_for_each sum wrong");
     vector_destroy(vec);
@@ -669,7 +669,7 @@ int test_iter_for_each_basic(void) {
 
 int test_iter_fold_basic(void) {
     Vector *vec = create_test_vector(10);
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     int sum = 0;
     iter_fold(it, &sum, sum_fold);
     ASSERT_EQUAL(sum, 45, "iter_fold sum wrong");
@@ -679,7 +679,7 @@ int test_iter_fold_basic(void) {
 
 int test_iter_fold_empty(void) {
     Vector *vec = vector_create(sizeof(int));
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     int sum = 0;
     iter_fold(it, &sum, sum_fold);
     ASSERT_EQUAL(sum, 0, "iter_fold on empty should return initial acc");
@@ -693,7 +693,7 @@ int test_iter_fold_empty(void) {
 
 int test_iter_find_basic(void) {
     Vector *vec = create_test_vector(10);
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     int *found = (int *)iter_find(it, is_even);
     ASSERT_NOT_NULL(found, "iter_find should find element");
     ASSERT_EQUAL(*found, 0, "iter_find should return first even (0)");
@@ -703,7 +703,7 @@ int test_iter_find_basic(void) {
 
 int test_iter_find_not_found(void) {
     Vector *vec = create_test_vector(10);
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     int *found = (int *)iter_find(it, is_negative);
     ASSERT_NULL(found, "iter_find should return NULL when not found");
     vector_destroy(vec);
@@ -712,7 +712,7 @@ int test_iter_find_not_found(void) {
 
 int test_iter_find_empty(void) {
     Vector *vec = vector_create(sizeof(int));
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     int *found = (int *)iter_find(it, is_even);
     ASSERT_NULL(found, "iter_find on empty should return NULL");
     vector_destroy(vec);
@@ -721,7 +721,7 @@ int test_iter_find_empty(void) {
 
 int test_iter_find_null_predicate(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     int *found = (int *)iter_find(it, NULL);
     ASSERT_NOT_NULL(found, "iter_find with NULL predicate should return first element");
     ASSERT_EQUAL(*found, 0, "first element should be 0");
@@ -735,7 +735,7 @@ int test_iter_find_null_predicate(void) {
 
 int test_iter_collect_basic(void) {
     Vector *src = create_test_vector(10);
-    Iterator *it = iter_filter(HeapIter((Container *)src), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)src), is_even);
     Container *dst = iter_collect(it);
     ASSERT_NOT_NULL(dst, "iter_collect failed");
     ASSERT_EQUAL(container_len(dst), 5, "collected wrong count");
@@ -752,7 +752,7 @@ int test_iter_collect_basic(void) {
 
 int test_iter_collect_empty(void) {
     Vector *src = vector_create(sizeof(int));
-    Iterator *it = HeapIter((Container *)src);
+    Iterator *it = IntoIter((Container *)src);
     Container *dst = iter_collect(it);
     ASSERT_NULL(dst, "iter_collect on empty should return NULL");
     vector_destroy(src);
@@ -765,7 +765,7 @@ int test_iter_collect_strings(void) {
     vector_push(src, "world");
     vector_push(src, "test");
 
-    Iterator *it = HeapIter((Container *)src);
+    Iterator *it = IntoIter((Container *)src);
     Container *dst = iter_collect(it);
     ASSERT_NOT_NULL(dst, "iter_collect strings failed");
     ASSERT_EQUAL(container_len(dst), 3, "collected wrong count");
@@ -790,7 +790,7 @@ int test_iter_collect_in_basic(void) {
     Vector *src = create_test_vector(10);
     Vector *dst = vector_create(sizeof(int));
 
-    Iterator *it = iter_filter(HeapIter((Container *)src), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)src), is_even);
     size_t n = iter_collect_in(it, (Container *)dst);
     ASSERT_EQUAL(n, 5, "collected wrong count");
     ASSERT_EQUAL(vector_len(dst), 5, "destination wrong length");
@@ -811,7 +811,7 @@ int test_iter_collect_in_existing(void) {
     int existing = 999;
     vector_push(dst, &existing);
 
-    Iterator *it = iter_filter(HeapIter((Container *)src), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)src), is_even);
     size_t n = iter_collect_in(it, (Container *)dst);
     ASSERT_EQUAL(n, 5, "collected wrong count");
     ASSERT_EQUAL(vector_len(dst), 6, "destination should have existing + new");
@@ -839,7 +839,7 @@ int test_iter_collect_into_hashmap(void) {
     vector_push(src, "country:France");
 
     /* Map strings to pairs */
-    Iterator *it = iter_map(HeapIter((Container *)src), make_pair, sizeof(StrPair));
+    Iterator *it = iter_map(IntoIter((Container *)src), make_pair, sizeof(StrPair));
 
     /* Collect into HashMap */
     HashMap *map = hashmap_str_str();
@@ -864,7 +864,7 @@ int test_iter_collect_into_hashmap(void) {
 
 int test_iter_collect_into_hashmap_empty(void) {
     Vector *src = vector_str();
-    Iterator *it = iter_map(HeapIter((Container *)src), make_pair, sizeof(StrPair));
+    Iterator *it = iter_map(IntoIter((Container *)src), make_pair, sizeof(StrPair));
 
     HashMap *map = hashmap_str_str();
     size_t n = iter_collect_in(it, (Container *)map);
@@ -882,7 +882,7 @@ int test_iter_collect_into_hashmap_with_duplicates(void) {
     vector_push(src, "color:blue");
     vector_push(src, "color:green");
 
-    Iterator *it = iter_map(HeapIter((Container *)src), make_pair, sizeof(StrPair));
+    Iterator *it = iter_map(IntoIter((Container *)src), make_pair, sizeof(StrPair));
 
     HashMap *map = hashmap_str_str();
     size_t n = iter_collect_in(it, (Container *)map);
@@ -906,7 +906,7 @@ int test_iter_complex_pipeline(void) {
     Iterator *it = iter_take(
         iter_map(
             iter_filter(
-                iter_skip(HeapIter((Container *)vec), 5),
+                iter_skip(IntoIter((Container *)vec), 5),
                 is_even),
             double_int, sizeof(int)),
         5);
@@ -932,7 +932,7 @@ int test_iter_complex_pipeline(void) {
 
 int test_iter_drop(void) {
     Vector *vec = create_test_vector(10);
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     iter_drop(it, 3);
     int *val = (int *)iter_next(it);
     ASSERT_NOT_NULL(val, "next after drop should not be NULL");
@@ -944,7 +944,7 @@ int test_iter_drop(void) {
 
 int test_iter_drop_all(void) {
     Vector *vec = create_test_vector(5);
-    Iterator *it = HeapIter((Container *)vec);
+    Iterator *it = IntoIter((Container *)vec);
     iter_drop(it, 10);
     ASSERT_NULL(iter_next(it), "next after drop beyond length should be NULL");
     iter_destroy(it);
@@ -961,7 +961,7 @@ int test_iter_large_filter(void) {
     Vector *vec = create_test_vector(N);
 
     Timer t = timer_start();
-    Iterator *it = iter_filter(HeapIter((Container *)vec), is_even);
+    Iterator *it = iter_filter(IntoIter((Container *)vec), is_even);
     size_t count = iter_count(it);
     double time = timer_elapsed(&t);
     printf("    Filter %zu elements: %.3f ms\n", N, time * 1000);
@@ -978,7 +978,7 @@ int test_iter_large_filter_map_take(void) {
     Timer t = timer_start();
     Iterator *it = iter_take(
         iter_map(
-            iter_filter(HeapIter((Container *)vec), is_even),
+            iter_filter(IntoIter((Container *)vec), is_even),
             double_int, sizeof(int)),
         1000);
     size_t count = iter_count(it);
