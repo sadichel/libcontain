@@ -783,15 +783,15 @@ int test_iter_collect_strings(void) {
 }
 
 /* ============================================================================
- * Terminal: collect_in (Vector)
+ * Terminal: collect_into (Vector)
  * ============================================================================ */
 
-int test_iter_collect_in_basic(void) {
+int test_iter_collect_into_basic(void) {
     Vector *src = create_test_vector(10);
     Vector *dst = vector_create(sizeof(int));
 
     Iterator *it = iter_filter(IntoIter((Container *)src), is_even);
-    size_t n = iter_collect_in(it, (Container *)dst);
+    size_t n = iter_collect_into(it, (Container *)dst);
     ASSERT_EQUAL(n, 5, "collected wrong count");
     ASSERT_EQUAL(vector_len(dst), 5, "destination wrong length");
 
@@ -805,14 +805,14 @@ int test_iter_collect_in_basic(void) {
     return 1;
 }
 
-int test_iter_collect_in_existing(void) {
+int test_iter_collect_into_existing(void) {
     Vector *src = create_test_vector(10);
     Vector *dst = vector_create(sizeof(int));
     int existing = 999;
     vector_push(dst, &existing);
 
     Iterator *it = iter_filter(IntoIter((Container *)src), is_even);
-    size_t n = iter_collect_in(it, (Container *)dst);
+    size_t n = iter_collect_into(it, (Container *)dst);
     ASSERT_EQUAL(n, 5, "collected wrong count");
     ASSERT_EQUAL(vector_len(dst), 6, "destination should have existing + new");
 
@@ -843,7 +843,7 @@ int test_iter_collect_into_hashmap(void) {
 
     /* Collect into HashMap */
     HashMap *map = hashmap_str_str();
-    size_t n = iter_collect_in(it, (Container *)map);
+    size_t n = iter_collect_into(it, (Container *)map);
     ASSERT_EQUAL(n, 3, "collected wrong count into hashmap");
     ASSERT_EQUAL(hashmap_len(map), 3, "hashmap wrong size");
 
@@ -867,7 +867,7 @@ int test_iter_collect_into_hashmap_empty(void) {
     Iterator *it = iter_map(IntoIter((Container *)src), make_pair, sizeof(StrPair));
 
     HashMap *map = hashmap_str_str();
-    size_t n = iter_collect_in(it, (Container *)map);
+    size_t n = iter_collect_into(it, (Container *)map);
     ASSERT_EQUAL(n, 0, "collect into hashmap from empty should be 0");
     ASSERT_EQUAL(hashmap_len(map), 0, "hashmap should be empty");
 
@@ -885,7 +885,7 @@ int test_iter_collect_into_hashmap_with_duplicates(void) {
     Iterator *it = iter_map(IntoIter((Container *)src), make_pair, sizeof(StrPair));
 
     HashMap *map = hashmap_str_str();
-    size_t n = iter_collect_in(it, (Container *)map);
+    size_t n = iter_collect_into(it, (Container *)map);
     ASSERT_EQUAL(n, 3, "all three should insert");
     ASSERT_EQUAL(hashmap_len(map), 1, "only one key 'color' exists");
     
@@ -1063,8 +1063,8 @@ int main(void) {
     TEST(test_iter_collect_basic);
     TEST(test_iter_collect_empty);
     TEST(test_iter_collect_strings);
-    TEST(test_iter_collect_in_basic);
-    TEST(test_iter_collect_in_existing);
+    TEST(test_iter_collect_into_basic);
+    TEST(test_iter_collect_into_existing);
 
     /* HashMap Collection Tests */
     TEST(test_iter_collect_into_hashmap);

@@ -212,7 +212,7 @@ Materialize into a new container of the same type as the source.
 Container *result = iter_collect(it);
 ```
 
-### Collect In
+### Collect Into
 Insert results into an existing container.
 
 ```c

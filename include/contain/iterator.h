@@ -1141,12 +1141,12 @@ static inline Container *iter_collect(Iterator *it) {
  *
  * @par Example
  * @code
- *   size_t n = iter_collect_in(
+ *   size_t n = iter_collect_into(
  *       iter_filter(IntoIter(vec), is_even), existing_set);
  *   printf("Inserted %zu elements\n", n);
  * @endcode
  */
-static inline size_t iter_collect_in(Iterator *it, Container *dst) {
+static inline size_t iter_collect_into(Iterator *it, Container *dst) {
     if (!it || !dst) {
         iter_destroy(it);
         return 0;

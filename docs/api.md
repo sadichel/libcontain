@@ -559,7 +559,7 @@ Lazy evaluation with decorator pattern. For zero-overhead fused execution, use [
 | `const void *iter_find(Iterator *it, bool (*pred)(const Container *, const void *))` | Find first match |
 | `void *iter_fold(Iterator *it, void *acc, void *(*f)(const Container *, const void *, void *))` | Fold/accumulate |
 | `Container *iter_collect(Iterator *it)` | Collect into new container |
-| `size_t iter_collect_in(Iterator *it, Container *dst)` | Insert into existing container |
+| `size_t iter_collect_into(Iterator *it, Container *dst)` | Insert into existing container |
 | `void iter_drop(Iterator *it, size_t n)` | Discard N elements (non-consuming) |
 
 ---
@@ -599,7 +599,7 @@ Fused pipeline execution with zero per-element overhead. Chainer combines multip
 | `void *chain_fold(Chainer *c, void *acc, void *(*fn)(const Container *, const void *, void *))` | Reduce to single value |
 | `void chain_for_each(Chainer *c, void (*fn)(const Container *, const void *))` | Apply function to each element |
 | `Container *chain_collect(Chainer *c)` | Create new container of same type |
-| `size_t chain_collect_in(Chainer *c, Container *dst)` | Insert into existing container |
+| `size_t chain_collect_into(Chainer *c, Container *dst)` | Insert into existing container |
 
 ---
 
