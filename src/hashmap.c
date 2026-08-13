@@ -46,6 +46,8 @@ struct HashMapImpl {
     uint16_t key_size;
     uint16_t val_size;
     uint32_t stride;
+    uint8_t key_owned;
+    uint8_t val_owned;
 };
 
 /* Hash entry stored in buckets */
@@ -74,13 +76,13 @@ static HashMapEntry *hashmap_entry_create(HashMap *map, const void *key, const v
     void *key_slot = lc_slot_at(entry->data, impl->key_offset);
     void *val_slot = lc_slot_at(entry->data, impl->val_offset);
     
-    if (lc_slot_init(key_slot, key, impl->key_size) != LC_OK) {
+    if (lc_slot_init(key_slot, key, impl->key_size, impl->key_owned) != LC_OK) {
         allocator_free(map->alloc, entry);
         return NULL;
     }
 
-    if (lc_slot_init(val_slot, val, impl->val_size) != LC_OK) {
-        lc_slot_free(key_slot, impl->key_size);
+    if (lc_slot_init(val_slot, val, impl->val_size, impl->val_owned) != LC_OK) {
+        lc_slot_free(key_slot, impl->key_size, impl->key_owned);
         allocator_free(map->alloc, entry);
         return NULL;
     }
@@ -98,8 +100,8 @@ static void hashmap_entry_free(HashMap *map, HashMapEntry *entry) {
     void *key_slot = lc_slot_at(entry->data, impl->key_offset);
     void *val_slot = lc_slot_at(entry->data, impl->val_offset);
     
-    lc_slot_free(key_slot, impl->key_size);
-    lc_slot_free(val_slot, impl->val_size);
+    lc_slot_free(key_slot, impl->key_size, impl->key_owned);
+    lc_slot_free(val_slot, impl->val_size, impl->val_owned);
 
     allocator_free(map->alloc, entry);
     map->container.len--;
@@ -257,6 +259,8 @@ static HashMap *hashmap_create_impl(const HashMapBuilder *cfg, const HashMapEntr
     impl->key_size = (uint16_t)cfg->key_size;
     impl->val_size = (uint16_t)cfg->val_size;
     impl->stride = layout->stride;
+    impl->key_owned = cfg->key_owned;
+    impl->val_owned = cfg->val_owned;
 
     ctx.map->container.items = ctx.buckets;
     ctx.map->container.len = 0;
@@ -309,6 +313,8 @@ static HashMap *hashmap_create_from_impl(const HashMap *src, size_t capacity, bo
     impl->key_size = src_impl->key_size;
     impl->val_size = src_impl->val_size;
     impl->stride = src_impl->stride;
+    impl->key_owned = src_impl->key_owned;
+    impl->val_owned = src_impl->val_owned;
 
     ctx.map->container.items = ctx.buckets;
     ctx.map->container.len = 0;
@@ -337,6 +343,8 @@ HashMapBuilder hashmap_builder(size_t key_size, size_t val_size) {
         .kcmp = NULL,
         .vcmp = NULL,
         .khash = NULL,
+        .key_owned = 1,
+        .val_owned = 1,
     };
 }
 
@@ -378,6 +386,12 @@ HashMapBuilder hashmap_builder_allocator(HashMapBuilder b, Allocator *alloc) {
     b.alloc = alloc;
     return b;
 }
+
+HashMapBuilder hashmap_builder_ref(HashMapBuilder b, uint8_t key_owned, uint8_t val_owned) {
+    b.key_owned = key_owned;
+    b.val_owned = val_owned;
+    return b;
+}   
 
 HashMap *hashmap_builder_build(HashMapBuilder b) {
     if (b.capacity == 0) return NULL;
@@ -425,6 +439,10 @@ HashMap *hashmap_str_any(size_t val_size) {
     return hashmap_builder_build(hashmap_builder_str_any(val_size));
 }
 
+HashMap *hashmap_str_ref_any(size_t val_size) {
+    return hashmap_builder_build(hashmap_builder_ref(hashmap_builder_str_any(val_size), 0, 1));
+}
+
 HashMap *hashmap_str_any_with_capacity(size_t val_size, size_t cap) {
     return hashmap_builder_build(hashmap_builder_capacity(hashmap_builder_str_any(val_size), cap));
 }
@@ -449,6 +467,10 @@ HashMap *hashmap_any_str(size_t key_size) {
     return hashmap_builder_build(hashmap_builder_any_str(key_size));
 }
 
+HashMap *hashmap_any_str_ref(size_t key_size) {
+    return hashmap_builder_build(hashmap_builder_ref(hashmap_builder_any_str(key_size), 1, 0));
+}
+
 HashMap *hashmap_any_str_with_capacity(size_t key_size, size_t cap) {
     return hashmap_builder_build(hashmap_builder_capacity(hashmap_builder_any_str(key_size), cap));
 }
@@ -471,6 +493,10 @@ HashMap *hashmap_any_str_aligned(size_t key_size, size_t key_align) {
 
 HashMap *hashmap_str_str(void) {
     return hashmap_builder_build(hashmap_builder_str_str());
+}
+
+HashMap *hashmap_str_ref_str_ref(void) {
+    return hashmap_builder_build(hashmap_builder_ref(hashmap_builder_str_str(), 0, 0));
 }
 
 HashMap *hashmap_str_str_with_capacity(size_t cap) {
@@ -604,6 +630,7 @@ static int hashmap_insert_impl(HashMap *map, const void *key, const void *val, s
     const size_t val_off = impl->val_offset;
     const size_t key_sz = impl->key_size;
     const size_t val_sz = impl->val_size;
+    const uint8_t val_owned = impl->val_owned;
     const lc_Comparator kcmp = map->kcmp;
     const lc_Comparator vcmp = map->vcmp;
 
@@ -617,7 +644,7 @@ static int hashmap_insert_impl(HashMap *map, const void *key, const void *val, s
             if (lc_slot_cmp(e_val, val, val_sz, vcmp) == 0) 
                 return LC_OK;
 
-            int rc = lc_slot_set(val_slot, val, val_sz);
+            int rc = lc_slot_set(val_slot, val, val_sz, val_owned);
             if (rc == LC_OK) 
         
             return rc;

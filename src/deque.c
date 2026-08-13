@@ -42,6 +42,7 @@ struct DequeImpl {
     uint16_t item_size;      /* 0 = string mode */
     uint16_t base_align;     /* alignment for first element */
     uint32_t stride;         /* = item_size (no padding) */
+    uint8_t  owned;          /* 1 = container owns/copies strings, 0 = user owns/references */
 };
 
 /* Layout calculation result */
@@ -210,7 +211,7 @@ static int deque_free_slot(Deque *deq, size_t from, size_t to) {
     uint8_t *base = (uint8_t *)deq->container.items;
 
     /* Free strings if in string mode */
-    if (impl->item_size == 0) {
+    if (impl->owned && impl->item_size == 0) {
         for (size_t i = from; i < to; i++) {
             size_t idx = deque_phys_step(head, i, cap);
             free(*(char **)(base + idx * stride));
@@ -293,12 +294,13 @@ static Deque *deque_create_impl(DequeBuilder *cfg, DequeEntryLayout *layout) {
     impl->item_size = (uint16_t)cfg->item_size;
     impl->base_align = (uint16_t)base_align;
     impl->stride = (uint32_t)stride;
-    deq->head = 0;
-
+    impl->owned = cfg->owned;
+    
     deq->container.items = buffer;
     deq->container.len = 0;
     deq->container.capacity = capacity;
     deq->container.ops = &DEQUE_CONTAINER_OPS;
+    deq->head = 0;
     deq->cmp = cfg->cmp;
     deq->impl = impl;
 
@@ -311,6 +313,7 @@ static Deque *deque_create_from_impl(const Deque *src, size_t capacity) {
     size_t stride = src->impl->stride;
     size_t base_align = src->impl->base_align;
     size_t item_size = src->impl->item_size;
+    uint8_t owned = src->impl->owned;
     const size_t nat_align = lc_alloc_max_align();
 
     if (capacity < DEQUE_MIN_CAPACITY) capacity = DEQUE_MIN_CAPACITY;
@@ -336,12 +339,13 @@ static Deque *deque_create_from_impl(const Deque *src, size_t capacity) {
     impl->item_size = (uint16_t)item_size;
     impl->base_align = (uint16_t)base_align;
     impl->stride = (uint32_t)stride;
-    deq->head = 0;
-
+    impl->owned = owned;
+    
     deq->container.items = buffer;
     deq->container.len = 0;
     deq->container.capacity = capacity;
     deq->container.ops = &DEQUE_CONTAINER_OPS;
+    deq->head = 0;
     deq->cmp = src->cmp;
     deq->impl = impl;
 
@@ -356,7 +360,8 @@ DequeBuilder deque_builder(size_t item_size) {
         .item_size = item_size,
         .base_align = 1,
         .capacity = DEQUE_MIN_CAPACITY,
-        .cmp = NULL
+        .cmp = NULL,
+        .owned = 1
     };
 }
 
@@ -365,7 +370,8 @@ DequeBuilder deque_builder_str(void) {
         .item_size = 0,
         .base_align = 1,
         .capacity = DEQUE_MIN_CAPACITY,
-        .cmp = NULL
+        .cmp = NULL,
+        .owned = 1
     };
 }
 
@@ -381,6 +387,11 @@ DequeBuilder deque_builder_comparator(DequeBuilder b, lc_Comparator cmp) {
 
 DequeBuilder deque_builder_alignment(DequeBuilder b, size_t base_align) {
     b.base_align = base_align;
+    return b;
+}
+
+DequeBuilder deque_builder_ref(DequeBuilder b, uint8_t owned) {
+    b.owned = owned;
     return b;
 }
 
@@ -416,6 +427,10 @@ Deque *deque_str(void) {
     return deque_builder_build(deque_builder_str());
 }
 
+Deque *deque_str_ref(void) {
+    return deque_builder_build(deque_builder_ref(deque_builder_str(), 0));
+}
+
 Deque *deque_str_with_capacity(size_t capacity) {
     return deque_builder_build(deque_builder_capacity(deque_builder_str(), capacity));
 }
@@ -427,7 +442,7 @@ void deque_destroy(Deque *deq) {
     if (!deq) return;
 
     /* Free strings in string mode */
-    if (deq->impl->item_size == 0 && deq->container.len > 0) {
+    if (deq->impl->owned && deq->impl->item_size == 0 && deq->container.len > 0) {
         size_t len = deq->container.len;
         size_t cap = deq->container.capacity;
         size_t head = deq->head;
@@ -464,19 +479,30 @@ static int deque_append_strings(Deque *dst, size_t pos, const Deque *src, size_t
     char **temp = (char **)malloc(count * sizeof(char *));
     if (!temp) return LC_ENOMEM;
 
-    for (size_t i = 0; i < count; i++) {
-        char **src_slot = (char **)deque_slot_at((Deque *)src, from + i);
-        temp[i] = strdup(*src_slot);
-        if (!temp[i]) {
-            while (i--) free(temp[i]);
-            free(temp);
-            return LC_ENOMEM;
+    uint8_t owned = dst->impl->owned;
+
+    if (owned) {
+        for (size_t i = 0; i < count; i++) {
+            char **src_slot = (char **)deque_slot_at((Deque *)src, from + i);
+            temp[i] = strdup(*src_slot);
+            if (!temp[i]) {
+                while (i--) free(temp[i]);
+                free(temp);
+                return LC_ENOMEM;
+            }
+        }
+    } else {
+        for (size_t i = 0; i < count; i++) {
+            char **src_slot = (char **)deque_slot_at((Deque *)src, from + i);
+            temp[i] = *src_slot;
         }
     }
 
     char **slots = (char **)deque_insert_slot(dst, pos, count);
     if (!slots) {
-        for (size_t i = 0; i < count; i++) free(temp[i]);
+        if (owned) {
+            for (size_t i = 0; i < count; i++) free(temp[i]);
+        }
         free(temp);
         return LC_ENOMEM;
     }
@@ -542,12 +568,12 @@ static int deque_insert_impl(Deque *deq, size_t pos, const void *item) {
     if (pos > deq->container.len) return LC_EBOUNDS;
 
     if (deq->impl->item_size == 0) {
-        char *str = strdup((const char *)item);
+        char *str = lc_str_dup((const char *)item, deq->impl->owned);
         if (!str) return LC_ENOMEM;
 
         void *slot = deque_insert_slot(deq, pos, 1);
         if (!slot) {
-            free(str);
+            lc_str_free(str, deq->impl->owned);
             return LC_ENOMEM;
         }
         *(char **)slot = str;
@@ -595,7 +621,7 @@ int deque_set(Deque *deq, size_t pos, const void *item) {
     if (pos >= deq->container.len) return LC_EBOUNDS;
 
     void *slot = deque_slot_at(deq, pos);
-    int rc = lc_slot_set(slot, item, deq->impl->item_size);
+    int rc = lc_slot_set(slot, item, deq->impl->item_size, deq->impl->owned);
 
     return rc;
 }
@@ -715,7 +741,7 @@ int deque_clear(Deque *deq) {
     if (!deq) return LC_EINVAL;
     if (deq->container.len == 0) return LC_OK;
 
-    if (deq->impl->item_size == 0) {
+    if (deq->impl->owned && deq->impl->item_size == 0) {
         size_t len = deq->container.len;
         size_t cap = deq->container.capacity;
         size_t head = deq->head;
@@ -793,26 +819,36 @@ int deque_splice(Deque *dst, size_t pos, size_t remove_count, const Deque *src, 
         const size_t src_head = src->head;
         const size_t src_cap = src->container.capacity;
         const uint8_t *src_base = (const uint8_t *)src->container.items;
+        uint8_t owned = dst->impl->owned;
 
         temp = (temp_len <= sizeof(stack_buf)) ? stack_buf : (uint8_t *)malloc(temp_len);
         if (!temp) return LC_ENOMEM;
 
-        for (size_t i = 0; i < insert_count; i++) {
-            size_t phys = deque_phys_wrap(src_head, src_from + i, src_cap);
-            const void *src_slot = src_base + (phys * stride);
-
-            if (isize == 0) {
-                const char *s = *(const char **)src_slot;
-                char *dup = s ? strdup(s) : NULL;
-                if (s && !dup) {
-                    for (size_t j = 0; j < i; j++)
-                        free(*(char **)(temp + (j * stride)));
-                    if (temp != stack_buf) free(temp);
-                    return LC_ENOMEM;
+        if (isize == 0) {
+            if (owned) {
+                for (size_t i = 0; i < insert_count; i++) {
+                    size_t phys = deque_phys_wrap(src_head, src_from + i, src_cap);
+                    const char *s = *(const char **)(src_base + (phys * stride));
+                    char *dup = s ? strdup(s) : NULL;
+                    if (s && !dup) {
+                        for (size_t j = 0; j < i; j++)
+                            free(*(char **)(temp + (j * stride)));
+                        if (temp != stack_buf) free(temp);
+                        return LC_ENOMEM;
+                    }
+                    *(char **)(temp + (i * stride)) = dup;
                 }
-                *(char **)(temp + (i * stride)) = dup;
             } else {
-                memcpy(temp + (i * stride), src_slot, stride);
+                for (size_t i = 0; i < insert_count; i++) {
+                    size_t phys = deque_phys_wrap(src_head, src_from + i, src_cap);
+                    const char *s = *(const char **)(src_base + (phys * stride));
+                    *(const char **)(temp + (i * stride)) = s;
+                }
+            }
+        } else {
+            for (size_t i = 0; i < insert_count; i++) {
+                size_t phys = deque_phys_wrap(src_head, src_from + i, src_cap);
+                memcpy(temp + (i * stride), src_base + (phys * stride), stride);
             }
         }
     }
@@ -853,6 +889,7 @@ int deque_unique(Deque *deq) {
     const size_t len = deq->container.len;
     const size_t stride = deq->impl->stride;
     const size_t isize = deq->impl->item_size;
+    const uint8_t owned = deq->impl->owned;
     uint8_t *base = (uint8_t *)deq->container.items;
     
     if (deq->cmp) {
@@ -875,7 +912,7 @@ int deque_unique(Deque *deq) {
                     }
                 }
             } else if (isize == 0) {
-                free(*(char **)curr);
+                lc_str_free(*(char **)curr, owned);
                 *(char **)curr = NULL;
             }
         }
@@ -896,7 +933,7 @@ int deque_unique(Deque *deq) {
                     *dst = *curr;
                 }
             } else {
-                free(*curr);
+                lc_str_free(*curr, owned);
                 *curr = NULL;
             }
         }
@@ -960,19 +997,25 @@ const void *deque_back(const Deque *deq) {
     return slot ? lc_slot_get(slot, deq->impl->item_size) : NULL;
 }
 
-void *deque_at_mut(const Deque *deq, size_t pos) {
+void *deque_at_mut(Deque *deq, size_t pos) {
     if (!deq) return NULL;
-    return deque_slot_at((Deque *)deq, pos);
+    return deque_slot_at(deq, pos);
 }
 
-void *deque_front_mut(const Deque *deq) {
+void *deque_front_mut(Deque *deq) {
     if (!deq) return NULL;
-    return deque_slot_at((Deque *)deq, 0);
+    return deque_slot_at(deq, 0);
 }
 
-void *deque_back_mut(const Deque *deq) {
+void *deque_back_mut(Deque *deq) {  
     if (!deq || deq->container.len == 0) return NULL;
-    return deque_slot_at((Deque *)deq, deq->container.len - 1);
+    return deque_slot_at(deq, deq->container.len - 1);
+}
+
+void *deque_as_slice(Deque *deq) {
+    if (!deq || deq->container.len == 0) return NULL;
+    if (deque_normalize(deq) != LC_OK) return NULL;
+    return deq->container.items;
 }
 
 size_t deque_find(const Deque *deq, const void *item) {
@@ -1114,12 +1157,12 @@ Deque *deque_reverse(const Deque *deq) {
     Deque *rev = deque_create_from_impl(deq, deq->container.len);
     if (!rev) return NULL;
 
-    const DequeImpl *src_impl = deq->impl;
     const size_t n = deq->container.len;
     const size_t head = deq->head;
     const size_t cap = deq->container.capacity;
-    const size_t stride = src_impl->stride;
-    const size_t isize = src_impl->item_size;
+    const size_t stride = deq->impl->stride;
+    const size_t isize = deq->impl->item_size;
+    const uint8_t owned = deq->impl->owned;
 
     uint8_t *dst_base = (uint8_t *)rev->container.items;
     const uint8_t *src_base = (const uint8_t *)deq->container.items;
@@ -1129,7 +1172,7 @@ Deque *deque_reverse(const Deque *deq) {
         const void *src_item = src_base + (src_idx * stride);
         void *dst_slot = dst_base + (i * stride);
 
-        if (lc_slot_copy(dst_slot, src_item, isize) != LC_OK) {
+        if (lc_slot_copy(dst_slot, src_item, isize, owned) != LC_OK) {
             deque_destroy(rev);
             return NULL;
         }
@@ -1145,12 +1188,12 @@ Deque *deque_clone(const Deque *deq) {
     Deque *clone = deque_create_from_impl(deq, deq->container.capacity);
     if (!clone) return NULL;
 
-    const DequeImpl *impl = deq->impl;
     const size_t len = deq->container.len;
     const size_t head = deq->head;
     const size_t cap = deq->container.capacity;
-    const size_t isize = impl->item_size;
-    const size_t stride = impl->stride;
+    const size_t isize = deq->impl->item_size;
+    const size_t stride = deq->impl->stride;
+    const uint8_t owned = deq->impl->owned;
     const uint8_t *src_base = (const uint8_t *)deq->container.items;
     uint8_t *dst_base = (uint8_t *)clone->container.items;
 
@@ -1160,7 +1203,7 @@ Deque *deque_clone(const Deque *deq) {
             void *src_slot = (uint8_t *)src_base + (phys_idx * stride);
             void *dst_slot = dst_base + (i * stride);
 
-            if (lc_slot_copy(dst_slot, src_slot, 0) != LC_OK) {
+            if (lc_slot_copy(dst_slot, src_slot, 0, owned) != LC_OK) {
                 deque_destroy(clone);
                 return NULL;
             }
@@ -1186,9 +1229,9 @@ Deque *deque_slice(const Deque *deq, size_t start, size_t end) {
     Deque *slice = deque_create_from_impl(deq, count);
     if (!slice) return NULL;
 
-    const DequeImpl *impl = deq->impl;
-    const size_t isize = impl->item_size;
-    const size_t stride = impl->stride;
+    const size_t isize = deq->impl->item_size;
+    const size_t stride = deq->impl->stride;
+    const uint8_t owned = deq->impl->owned; 
     const size_t head = deq->head;
     const size_t cap = deq->container.capacity;
     const uint8_t *src_base = (const uint8_t *)deq->container.items;
@@ -1200,7 +1243,7 @@ Deque *deque_slice(const Deque *deq, size_t start, size_t end) {
             void *src_slot = (uint8_t *)src_base + (phy_idx * stride);
             void *dst_slot = dst_base + (i * stride);
 
-            if (lc_slot_copy(dst_slot, src_slot, 0) != LC_OK) {
+            if (lc_slot_copy(dst_slot, src_slot, 0, owned) != LC_OK) {
                 deque_destroy(slice);
                 return NULL;
             }

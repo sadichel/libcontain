@@ -102,7 +102,9 @@ Dynamic array with automatic resizing.
 | `Vector *vector_create_with_capacity(size_t item_size, size_t cap)` | Create with initial capacity |
 | `Vector *vector_create_with_comparator(size_t item_size, lc_Comparator cmp)` | Create with custom comparator |
 | `Vector *vector_create_aligned(size_t item_size, size_t align)` | Create with aligned elements |
-| `Vector *vector_str(void)` | Create string vector |
+| `Vector *vector_str(void)` | Create string vector (strdup) |
+| `Vector *vector_str_ref(void)` | Create string vector (reference) |
+| `Vector *vector_builder_build(VectorBuilder b)` | Build vector from builder |
 | `void vector_destroy(Vector *vec)` | Destroy vector |
 
 ### Insertion
@@ -122,6 +124,9 @@ Dynamic array with automatic resizing.
 | `void *vector_at_mut(const Vector *vec, size_t pos)` | Get element (mutable) |
 | `const void *vector_front(const Vector *vec)` | Get first element |
 | `const void *vector_back(const Vector *vec)` | Get last element |
+| `void *vector_front_mut(Vector *vec)` | Get mutable pointer to first element |
+| `void *vector_back_mut(Vector *vec)` | Get mutable pointer to last element |
+| `void *vector_as_slice(Vector *vec)` | Get mutable pointer to underlying array (slice) |
 | `int vector_set(Vector *vec, size_t pos, const void *item)` | Set element |
 
 ### Removal
@@ -198,7 +203,9 @@ Double-ended queue with O(1) push/pop at both ends.
 | `Deque *deque_create_with_capacity(size_t item_size, size_t cap)` | Create with initial capacity |
 | `Deque *deque_create_with_comparator(size_t item_size, lc_Comparator cmp)` | Create with custom comparator |
 | `Deque *deque_create_aligned(size_t item_size, size_t align)` | Create with aligned elements |
-| `Deque *deque_str(void)` | Create string deque |
+| `Deque *deque_str(void)` | Create string deque (strdup) |
+| `Deque *deque_str_ref(void)` | Create string deque (reference) |
+| `Deque *deque_builder_build(DequeBuilder b)` | Build deque from builder |
 | `void deque_destroy(Deque *deq)` | Destroy deque |
 
 ### Insertion
@@ -219,6 +226,9 @@ Double-ended queue with O(1) push/pop at both ends.
 | `void *deque_at_mut(const Deque *deq, size_t pos)` | Get element (mutable) |
 | `const void *deque_front(const Deque *deq)` | Get first element |
 | `const void *deque_back(const Deque *deq)` | Get last element |
+| `void *deque_front_mut(Deque *deq)` | Get mutable pointer to first element |
+| `void *deque_back_mut(Deque *deq)` | Get mutable pointer to last element |
+| `void *deque_as_slice(Deque *deq)` | Get mutable pointer to underlying array (slice) |
 | `int deque_set(Deque *deq, size_t pos, const void *item)` | Set element |
 
 ### Removal
@@ -295,7 +305,9 @@ Doubly-linked list with O(1) insertion/removal at known positions.
 | `LinkedList *linkedlist_create(size_t item_size)` | Create new list |
 | `LinkedList *linkedlist_create_with_comparator(size_t item_size, lc_Comparator cmp)` | Create with custom comparator |
 | `LinkedList *linkedlist_create_aligned(size_t item_size, size_t align)` | Create with aligned elements |
-| `LinkedList *linkedlist_str(void)` | Create string list |
+| `LinkedList *linkedlist_str(void)` | Create string list (strdup) |
+| `LinkedList *linkedlist_str_ref(void)` | Create string list (reference) |
+| `LinkedList *linkedlist_builder_build(LinkedListBuilder b)` | Build list from builder |
 | `void linkedlist_destroy(LinkedList *list)` | Destroy list |
 
 ### Insertion
@@ -316,6 +328,8 @@ Doubly-linked list with O(1) insertion/removal at known positions.
 | `void *linkedlist_at_mut(const LinkedList *list, size_t pos)` | Get element (mutable) |
 | `const void *linkedlist_front(const LinkedList *list)` | Get first element |
 | `const void *linkedlist_back(const LinkedList *list)` | Get last element |
+| `void *linkedlist_front_mut(LinkedList *list)` | Get mutable pointer to first element |
+| `void *linkedlist_back_mut(LinkedList *list)` | Get mutable pointer to last element |
 | `int linkedlist_set(LinkedList *list, size_t pos, const void *item)` | Set element |
 
 ### Removal
@@ -385,7 +399,9 @@ Hash set with separate chaining and automatic rehashing.
 | `HashSet *hashset_create_with_hasher(size_t item_size, lc_Hasher hasher)` | Create with custom hash |
 | `HashSet *hashset_create_with_comparator(size_t item_size, lc_Comparator cmp)` | Create with custom comparator |
 | `HashSet *hashset_create_aligned(size_t item_size, size_t align)` | Create with aligned elements |
-| `HashSet *hashset_str(void)` | Create string set |
+| `HashSet *hashset_str(void)` | Create string set (strdup) |
+| `HashSet *hashset_str_ref(void)` | Create string set (reference) |
+| `HashSet *hashset_builder_build(HashSetBuilder b)` | Build set from builder |
 | `void hashset_destroy(HashSet *set)` | Destroy set |
 
 ### Operations
@@ -458,6 +474,13 @@ Hash map with separate chaining and automatic rehashing.
 | `HashMap *hashmap_create_with_hasher(size_t key_size, size_t val_size, lc_Hasher hasher)` | Create with custom hash |
 | `HashMap *hashmap_create_with_comparator(size_t key_size, size_t val_size, lc_Comparator kcmp, lc_Comparator vcmp)` | Create with custom comparators |
 | `HashMap *hashmap_create_aligned(size_t key_size, size_t val_size, size_t key_align, size_t val_align)` | Create with aligned keys/values |
+| `HashMap *hashmap_str_any(size_t val_size)` | Create string -> any map (strdup) |
+| `HashMap *hashmap_str_ref_any(size_t val_size)` | Create string -> any map (reference) |
+| `HashMap *hashmap_any_str(size_t key_size)` | Create any -> string map (strdup) |
+| `HashMap *hashmap_any_str_ref(size_t key_size)` | Create any -> string map (reference) |
+| `HashMap *hashmap_str_str(void)` | Create string -> string map (strdup) |
+| `HashMap *hashmap_str_ref_str_ref(void)` | Create string -> string map (reference) |
+| `HashMap *hashmap_builder_build(HashMapBuilder b)` | Build map from builder |
 | `void hashmap_destroy(HashMap *map)` | Destroy map |
 
 ### Operations
@@ -634,10 +657,15 @@ Extensible lazy fused pipeline with generator support (flatten, zip) and custom 
 | Container | Macro |
 |-----------|-------|
 | Vector | `DECL_VECTOR_TYPE(T, size, name)` |
+| Vector | `DECL_VECTOR_REF_TYPE(T, size, name, owned)` |
 | Deque | `DECL_DEQUE_TYPE(T, size, name)` |
+| Deque | `DECL_DEQUE_REF_TYPE(T, size, name, owned)` |
 | LinkedList | `DECL_LINKEDLIST_TYPE(T, size, name)` |
+| LinkedList | `DECL_LINKEDLIST_REF_TYPE(T, size, name, owned)` |
 | HashSet | `DECL_HASHSET_TYPE(T, size, name)` |
+| HashSet | `DECL_HASHSET_REF_TYPE(T, size, name, owned)` |
 | HashMap | `DECL_HASHMAP_TYPE(K, V, ksize, vsize, name)` |
+| HashMap | `DECL_HASHMAP_REF_TYPE(K, V, ksize, vsize, name, kowned, vowned)` |
 
 ### Example
 

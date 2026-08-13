@@ -20,23 +20,28 @@
 DECL_VECTOR_TYPE(int, sizeof(int), IntVector)
 DECL_VECTOR_TYPE(double, sizeof(double), DoubleVector)
 DECL_VECTOR_TYPE(const char*, 0, StringVector)
+DECL_VECTOR_REF_TYPE(const char*, 0, StringRefVector, 0)
 
 DECL_DEQUE_TYPE(int, sizeof(int), IntDeque)
 DECL_DEQUE_TYPE(double, sizeof(double), DoubleDeque)
 DECL_DEQUE_TYPE(const char*, 0, StringDeque)
+DECL_DEQUE_REF_TYPE(const char*, 0, StringRefDeque, 0)
 
 DECL_LINKEDLIST_TYPE(int, sizeof(int), IntList)
 DECL_LINKEDLIST_TYPE(double, sizeof(double), DoubleList)
 DECL_LINKEDLIST_TYPE(const char*, 0, StringList)
+DECL_LINKEDLIST_REF_TYPE(const char*, 0, StringRefList, 0)
 
 DECL_HASHSET_TYPE(int, sizeof(int), IntSet)
 DECL_HASHSET_TYPE(double, sizeof(double), DoubleSet)
 DECL_HASHSET_TYPE(const char*, 0, StringSet)
+DECL_HASHSET_REF_TYPE(const char*, 0, StringRefSet, 0)
 
 DECL_HASHMAP_TYPE(int, int, sizeof(int), sizeof(int), IntIntMap)
 DECL_HASHMAP_TYPE(const char*, int, 0, sizeof(int), StrIntMap)
 DECL_HASHMAP_TYPE(const char*, const char*, 0, 0, StrStrMap)
 DECL_HASHMAP_TYPE(int, double, sizeof(int), sizeof(double), IntDoubleMap)
+DECL_HASHMAP_REF_TYPE(const char*, const char*, 0, 0, StrStrRefMap, 0, 0)
 
 /* Struct tests - define custom struct and its typed containers */
 typedef struct {
@@ -1135,6 +1140,217 @@ static int test_map_keys_values(void) {
 }
 
 /* ============================================================================
+ * Ref Tests
+ * ============================================================================ */
+
+static int test_vector_str_ref(void) {
+    StringVector *owned = StringVector_create();
+    StringRefVector *ref = StringRefVector_create();
+    
+    const char *s = "hello";
+    StringRefVector_push(ref, s);
+    ASSERT_STR_EQUAL(StringRefVector_at(ref, 0), "hello", "ref push works");
+    
+    char str[10] = "world";
+    StringRefVector_push(ref, str);
+    strcpy(str, "goodbye");
+    ASSERT_STR_EQUAL(StringRefVector_at(ref, 1), "goodbye", "ref points to same memory");
+    
+    StringRefVector *clone = StringRefVector_clone(ref);
+    ASSERT_STR_EQUAL(StringRefVector_at(clone, 0), "hello", "clone ref works");
+    strcpy(str, "final");
+    ASSERT_STR_EQUAL(StringRefVector_at(ref, 1), "final", "ref sees change");
+    ASSERT_STR_EQUAL(StringRefVector_at(clone, 1), "final", "clone sees same change");
+    
+    StringVector_push(owned, "owned");
+    StringVector_append(owned, (StringVector*)ref);
+    ASSERT_STR_EQUAL(StringVector_at(owned, 1), "hello", "append ref to owned works");
+    
+    char *str2 = malloc(10);
+    strcpy(str2, "malloced");
+    StringRefVector_push(ref, str2);
+    StringRefVector_destroy(ref);
+    ASSERT_STR_EQUAL(str2, "malloced", "user string still valid");
+    free(str2);
+    
+    StringVector_destroy(owned);
+    StringRefVector_destroy(clone);
+    return 1;
+}
+
+static int test_deque_str_ref(void) {
+    StringRefDeque *ref = StringRefDeque_create();
+    StringDeque *owned = StringDeque_create();
+    
+    const char *s = "hello";
+    StringRefDeque_push_back(ref, s);
+    ASSERT_STR_EQUAL(StringRefDeque_at(ref, 0), "hello", "ref push works");
+    
+    char str[10] = "world";
+    StringRefDeque_push_back(ref, str);
+    strcpy(str, "goodbye");
+    ASSERT_STR_EQUAL(StringRefDeque_at(ref, 1), "goodbye", "ref points to same memory");
+    
+    StringRefDeque *clone = StringRefDeque_clone(ref);
+    strcpy(str, "final");
+    ASSERT_STR_EQUAL(StringRefDeque_at(ref, 1), "final", "ref sees change");
+    ASSERT_STR_EQUAL(StringRefDeque_at(clone, 1), "final", "clone sees same change");
+    
+    StringDeque_push_back(owned, "owned");
+    StringDeque_append(owned, (StringDeque*)ref);
+    ASSERT_STR_EQUAL(StringDeque_at(owned, 1), "hello", "append ref to owned works");
+    
+    char *str2 = malloc(10);
+    strcpy(str2, "malloced");
+    StringRefDeque_push_back(ref, str2);
+    StringRefDeque_destroy(ref);
+    ASSERT_STR_EQUAL(str2, "malloced", "user string still valid");
+    free(str2);
+    
+    StringDeque_destroy(owned);
+    StringRefDeque_destroy(clone);
+    return 1;
+}
+
+static int test_list_str_ref(void) {
+    StringRefList *ref = StringRefList_create();
+    StringList *owned = StringList_create();
+    
+    const char *s = "hello";
+    StringRefList_push_back(ref, s);
+    ASSERT_STR_EQUAL(StringRefList_at(ref, 0), "hello", "ref push works");
+    
+    char str[10] = "world";
+    StringRefList_push_back(ref, str);
+    strcpy(str, "goodbye");
+    ASSERT_STR_EQUAL(StringRefList_at(ref, 1), "goodbye", "ref points to same memory");
+    
+    StringRefList *clone = StringRefList_clone(ref);
+    strcpy(str, "final");
+    ASSERT_STR_EQUAL(StringRefList_at(ref, 1), "final", "ref sees change");
+    ASSERT_STR_EQUAL(StringRefList_at(clone, 1), "final", "clone sees same change");
+    
+    StringList_push_back(owned, "owned");
+    StringList_append(owned, (StringList*)ref);
+    ASSERT_STR_EQUAL(StringList_at(owned, 1), "hello", "append ref to owned works");
+    
+    char *str2 = malloc(10);
+    strcpy(str2, "malloced");
+    StringRefList_push_back(ref, str2);
+    StringRefList_destroy(ref);
+    ASSERT_STR_EQUAL(str2, "malloced", "user string still valid");
+    free(str2);
+    
+    StringList_destroy(owned);
+    StringRefList_destroy(clone);
+    return 1;
+}
+
+static int test_set_str_ref(void) {
+    StringRefSet *ref = StringRefSet_create();
+    ASSERT_NOT_NULL(ref, "StringRefSet_create failed");
+    
+    char str1[10] = "hello";
+    char str2[10] = "world";
+    StringRefSet_insert(ref, str1);
+    StringRefSet_insert(ref, str2);
+    
+    /* Verify ref points to original memory */
+    StringRefSetIterator it = StringRefSet_iter(ref);
+    const char *str;
+    int count = 0;
+    while (StringRefSet_next(&it, &str)) {
+        if (strcmp(str, str1) == 0) {
+            ASSERT_PTR_EQUAL(str, str1, "ref should point to str1");
+            count++;
+        } else if (strcmp(str, str2) == 0) {
+            ASSERT_PTR_EQUAL(str, str2, "ref should point to str2");
+            count++;
+        }
+    }
+    ASSERT_EQUAL(count, 2, "should have both strings");
+    
+    /* Clone should point to same memory */
+    StringRefSet *clone = StringRefSet_clone(ref);
+    ASSERT_NOT_NULL(clone, "clone failed");
+    
+    StringRefSetIterator cit = StringRefSet_iter(clone);
+    count = 0;
+    while (StringRefSet_next(&cit, &str)) {
+        if (strcmp(str, str1) == 0) {
+            ASSERT_PTR_EQUAL(str, str1, "clone should point to str1");
+            count++;
+        } else if (strcmp(str, str2) == 0) {
+            ASSERT_PTR_EQUAL(str, str2, "clone should point to str2");
+            count++;
+        }
+    }
+    ASSERT_EQUAL(count, 2, "clone should have both strings");
+    
+    /* User owns memory - survives destroy */
+    char *str3 = malloc(10);
+    strcpy(str3, "malloced");
+    StringRefSet_insert(ref, str3);
+    
+    StringRefSet_destroy(clone);
+    StringRefSet_destroy(ref);
+    ASSERT_STR_EQUAL(str3, "malloced", "string survives destroy");
+    free(str3);
+    
+    return 1;
+}
+
+static int test_map_str_ref(void) {
+    StrStrRefMap *ref = StrStrRefMap_create();
+    ASSERT_NOT_NULL(ref, "StrStrRefMap_create failed");
+    
+    char key1[20] = "hello";
+    char val1[20] = "world";
+    char key2[20] = "foo";
+    char val2[20] = "bar";
+    StrStrRefMap_insert(ref, key1, val1);
+    StrStrRefMap_insert(ref, key2, val2);
+    
+    /* Value pointers point to original memory */
+    const char *got1 = StrStrRefMap_get(ref, "hello");
+    ASSERT_PTR_EQUAL(got1, val1, "ref points to val1");
+    
+    const char *got2 = StrStrRefMap_get(ref, "foo");
+    ASSERT_PTR_EQUAL(got2, val2, "ref points to val2");
+    
+    /* Clone preserves ref behavior */
+    StrStrRefMap *clone = StrStrRefMap_clone(ref);
+    ASSERT_NOT_NULL(clone, "clone failed");
+    
+    const char *clone_got1 = StrStrRefMap_get(clone, "hello");
+    ASSERT_PTR_EQUAL(clone_got1, val1, "clone points to val1");
+    
+    const char *clone_got2 = StrStrRefMap_get(clone, "foo");
+    ASSERT_PTR_EQUAL(clone_got2, val2, "clone points to val2");
+    
+    /* Modify original - both see change (shared memory) */
+    strcpy(val1, "final");
+    ASSERT_STR_EQUAL(StrStrRefMap_get(ref, "hello"), "final", "ref sees change");
+    ASSERT_STR_EQUAL(StrStrRefMap_get(clone, "hello"), "final", "clone sees same change");
+    
+    /* User owns memory - survives destroy */
+    char *k = malloc(20);
+    char *v = malloc(20);
+    strcpy(k, "malloc_key");
+    strcpy(v, "malloc_val");
+    StrStrRefMap_insert(ref, k, v);
+    
+    StrStrRefMap_destroy(clone);
+    StrStrRefMap_destroy(ref);
+    ASSERT_STR_EQUAL(k, "malloc_key", "key survives destroy");
+    ASSERT_STR_EQUAL(v, "malloc_val", "value survives destroy");
+    free(k);
+    free(v);
+    
+    return 1;
+}
+
+/* ============================================================================
  * Iterator Tests
  * ============================================================================ */
 
@@ -1145,20 +1361,20 @@ static int test_vector_iterators(void) {
     }
 
     /* Forward iteration */
-    Iterator it = IntVector_iter(vec);
+    IntVectorIterator it = IntVector_iter(vec);
+    int val;
     int expected = 0;
-    const int *val;
-    while ((val = iter_next(&it))) {
-        ASSERT_EQUAL(*val, expected, "vector forward iteration");
+    while (IntVector_next(&it, &val)) {
+        ASSERT_EQUAL(val, expected, "vector forward iteration");
         expected++;
     }
     ASSERT_EQUAL(expected, 10, "vector forward iteration count");
 
     /* Reverse iteration */
-    it = IntVector_iter_reversed(vec);
+    IntVectorIterator rit = IntVector_iter_reversed(vec);
     expected = 9;
-    while ((val = iter_next(&it))) {
-        ASSERT_EQUAL(*val, expected, "vector reverse iteration");
+    while (IntVector_next(&rit, &val)) {
+        ASSERT_EQUAL(val, expected, "vector reverse iteration");
         expected--;
     }
     ASSERT_EQUAL(expected, -1, "vector reverse iteration count");
@@ -1174,20 +1390,20 @@ static int test_deque_iterators(void) {
     }
 
     /* Forward iteration */
-    Iterator it = IntDeque_iter(deq);
+    IntDequeIterator it = IntDeque_iter(deq);
+    int val;
     int expected = 0;
-    const int *val;
-    while ((val = iter_next(&it))) {
-        ASSERT_EQUAL(*val, expected, "deque forward iteration");
+    while (IntDeque_next(&it, &val)) {
+        ASSERT_EQUAL(val, expected, "deque forward iteration");
         expected++;
     }
     ASSERT_EQUAL(expected, 10, "deque forward iteration count");
 
     /* Reverse iteration */
-    it = IntDeque_iter_reversed(deq);
+    IntDequeIterator rit = IntDeque_iter_reversed(deq);
     expected = 9;
-    while ((val = iter_next(&it))) {
-        ASSERT_EQUAL(*val, expected, "deque reverse iteration");
+    while (IntDeque_next(&rit, &val)) {
+        ASSERT_EQUAL(val, expected, "deque reverse iteration");
         expected--;
     }
     ASSERT_EQUAL(expected, -1, "deque reverse iteration count");
@@ -1203,20 +1419,20 @@ static int test_list_iterators(void) {
     }
 
     /* Forward iteration */
-    Iterator it = IntList_iter(list);
+    IntListIterator it = IntList_iter(list);
+    int val;
     int expected = 0;
-    const int *val;
-    while ((val = iter_next(&it))) {
-        ASSERT_EQUAL(*val, expected, "list forward iteration");
+    while (IntList_next(&it, &val)) {
+        ASSERT_EQUAL(val, expected, "list forward iteration");
         expected++;
     }
     ASSERT_EQUAL(expected, 10, "list forward iteration count");
 
     /* Reverse iteration */
-    it = IntList_iter_reversed(list);
+    IntListIterator rit = IntList_iter_reversed(list);
     expected = 9;
-    while ((val = iter_next(&it))) {
-        ASSERT_EQUAL(*val, expected, "list reverse iteration");
+    while (IntList_next(&rit, &val)) {
+        ASSERT_EQUAL(val, expected, "list reverse iteration");
         expected--;
     }
     ASSERT_EQUAL(expected, -1, "list reverse iteration count");
@@ -1232,12 +1448,12 @@ static int test_set_iterators(void) {
     }
 
     /* Forward iteration (order unspecified, but should visit all elements) */
-    Iterator it = IntSet_iter(set);
+    IntSetIterator it = IntSet_iter(set);
+    int val;
     int count = 0;
-    const int *val;
-    while ((val = iter_next(&it))) {
+    while (IntSet_next(&it, &val)) {
         count++;
-        ASSERT_TRUE(*val >= 0 && *val < 100, "set iteration value in range");
+        ASSERT_TRUE(val >= 0 && val < 100, "set iteration value in range");
     }
     ASSERT_EQUAL(count, 100, "set iteration count");
 
@@ -1251,13 +1467,12 @@ static int test_map_iterators(void) {
     StrIntMap_insert(map, "banana", 200);
     StrIntMap_insert(map, "cherry", 300);
 
-    Iterator it = StrIntMap_iter(map);
+    StrIntMapIterator it = StrIntMap_iter(map);
     int count = 0;
     int found_100 = 0, found_200 = 0, found_300 = 0;
-    const void *entry;
-    while ((entry = iter_next(&it))) {
-        const char *key = StrIntMap_entry_key(map, entry);
-        int val = StrIntMap_entry_value(map, entry);
+    const char *key;
+    int val;
+    while (StrIntMap_next(&it, &key, &val)) {
         count++;
         ASSERT_NOT_NULL(key, "map entry key not null");
         
@@ -1283,10 +1498,10 @@ static int test_vector_string_iterators(void) {
     StringVector_push(vec, "test");
 
     /* Forward iteration */
-    Iterator it = StringVector_iter(vec);
+    StringVectorIterator it = StringVector_iter(vec);
     const char *s;
     int count = 0;
-    while ((s = iter_next(&it))) {
+    while (StringVector_next(&it, &s)) {
         if (count == 0) ASSERT_STR_EQUAL(s, "hello", "string forward iteration 0");
         if (count == 1) ASSERT_STR_EQUAL(s, "world", "string forward iteration 1");
         if (count == 2) ASSERT_STR_EQUAL(s, "test", "string forward iteration 2");
@@ -1295,9 +1510,9 @@ static int test_vector_string_iterators(void) {
     ASSERT_EQUAL(count, 3, "string forward iteration count");
 
     /* Reverse iteration */
-    it = StringVector_iter_reversed(vec);
+    StringVectorIterator rit = StringVector_iter_reversed(vec);
     count = 0;
-    while ((s = iter_next(&it))) {
+    while (StringVector_next(&rit, &s)) {
         if (count == 0) ASSERT_STR_EQUAL(s, "test", "string reverse iteration 0");
         if (count == 1) ASSERT_STR_EQUAL(s, "world", "string reverse iteration 1");
         if (count == 2) ASSERT_STR_EQUAL(s, "hello", "string reverse iteration 2");
@@ -1316,10 +1531,10 @@ static int test_deque_string_iterators(void) {
     StringDeque_push_back(deq, "test");
 
     /* Forward iteration */
-    Iterator it = StringDeque_iter(deq);
+    StringDequeIterator it = StringDeque_iter(deq);
     const char *s;
     int count = 0;
-    while ((s = iter_next(&it))) {
+    while (StringDeque_next(&it, &s)) {
         if (count == 0) ASSERT_STR_EQUAL(s, "hello", "deque string forward 0");
         if (count == 1) ASSERT_STR_EQUAL(s, "world", "deque string forward 1");
         if (count == 2) ASSERT_STR_EQUAL(s, "test", "deque string forward 2");
@@ -1328,9 +1543,9 @@ static int test_deque_string_iterators(void) {
     ASSERT_EQUAL(count, 3, "deque string forward count");
 
     /* Reverse iteration */
-    it = StringDeque_iter_reversed(deq);
+    StringDequeIterator rit = StringDeque_iter_reversed(deq);
     count = 0;
-    while ((s = iter_next(&it))) {
+    while (StringDeque_next(&rit, &s)) {
         if (count == 0) ASSERT_STR_EQUAL(s, "test", "deque string reverse 0");
         if (count == 1) ASSERT_STR_EQUAL(s, "world", "deque string reverse 1");
         if (count == 2) ASSERT_STR_EQUAL(s, "hello", "deque string reverse 2");
@@ -1349,10 +1564,10 @@ static int test_list_string_iterators(void) {
     StringList_push_back(list, "test");
 
     /* Forward iteration */
-    Iterator it = StringList_iter(list);
+    StringListIterator it = StringList_iter(list);
     const char *s;
     int count = 0;
-    while ((s = iter_next(&it))) {
+    while (StringList_next(&it, &s)) {
         if (count == 0) ASSERT_STR_EQUAL(s, "hello", "list string forward 0");
         if (count == 1) ASSERT_STR_EQUAL(s, "world", "list string forward 1");
         if (count == 2) ASSERT_STR_EQUAL(s, "test", "list string forward 2");
@@ -1361,9 +1576,9 @@ static int test_list_string_iterators(void) {
     ASSERT_EQUAL(count, 3, "list string forward count");
 
     /* Reverse iteration */
-    it = StringList_iter_reversed(list);
+    StringListIterator rit = StringList_iter_reversed(list);
     count = 0;
-    while ((s = iter_next(&it))) {
+    while (StringList_next(&rit, &s)) {
         if (count == 0) ASSERT_STR_EQUAL(s, "test", "list string reverse 0");
         if (count == 1) ASSERT_STR_EQUAL(s, "world", "list string reverse 1");
         if (count == 2) ASSERT_STR_EQUAL(s, "hello", "list string reverse 2");
@@ -1382,10 +1597,10 @@ static int test_set_string_iterators(void) {
     StringSet_insert(set, "cherry");
 
     /* Forward iteration (order unspecified, but should visit all elements) */
-    Iterator it = StringSet_iter(set);
-    int count = 0;
+    StringSetIterator it = StringSet_iter(set);
     const char *s;
-    while ((s = iter_next(&it))) {
+    int count = 0;
+    while (StringSet_next(&it, &s)) {
         count++;
         ASSERT_NOT_NULL(s, "string set iteration value not null");
     }
@@ -1402,12 +1617,11 @@ static int test_map_string_iterators(void) {
     StrStrMap_insert(map, "c", "programming");
 
     /* Forward iteration */
-    Iterator it = StrStrMap_iter(map);
+    StrStrMapIterator it = StrStrMap_iter(map);
     int count = 0;
-    const void *entry;
-    while ((entry = iter_next(&it))) {
-        const char *key = StrStrMap_entry_key(map, entry);
-        const char *val = StrStrMap_entry_value(map, entry);
+    const char *key;
+    const char *val;
+    while (StrStrMap_next(&it, &key, &val)) {
         count++;
         ASSERT_NOT_NULL(key, "map string entry key not null");
         ASSERT_NOT_NULL(val, "map string entry value not null");
@@ -1675,6 +1889,13 @@ int main(void) {
     TEST(test_map_int_record);
     TEST(test_map_clone);
     TEST(test_map_keys_values);
+
+    /* String Ref */
+    TEST(test_vector_str_ref);
+    TEST(test_deque_str_ref);
+    TEST(test_list_str_ref);
+    TEST(test_set_str_ref);
+    TEST(test_map_str_ref);
 
     /* Iterator Tests */
     TEST(test_vector_iterators);

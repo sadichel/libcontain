@@ -686,6 +686,187 @@ int test_hashmap_keys_str_str(void) {
 }
 
 /* ============================================================================
+ * Ref Tests
+ * ============================================================================ */
+
+int test_hashmap_str_ref_str_ref(void) {
+    HashMap *ref = hashmap_str_ref_str_ref();
+    ASSERT_NOT_NULL(ref, "hashmap_str_ref_str_ref failed");
+    
+    char key1[20] = "hello";
+    char val1[20] = "world";
+    char key2[20] = "foo";
+    char val2[20] = "bar";
+    hashmap_insert(ref, key1, val1);
+    hashmap_insert(ref, key2, val2);
+    
+    /* Value pointers point to original memory */
+    ASSERT_PTR_EQUAL(hashmap_get(ref, "hello"), val1, "ref points to val1");
+    ASSERT_PTR_EQUAL(hashmap_get(ref, "foo"), val2, "ref points to val2");
+    
+    /* Clone preserves ref behavior */
+    HashMap *clone = hashmap_clone(ref);
+    ASSERT_NOT_NULL(clone, "clone failed");
+    ASSERT_PTR_EQUAL(hashmap_get(clone, "hello"), val1, "clone points to val1");
+    ASSERT_PTR_EQUAL(hashmap_get(clone, "foo"), val2, "clone points to val2");
+    
+    /* Modify original - both see change (shared memory) */
+    strcpy(val1, "final");
+    ASSERT_STR_EQUAL((const char *)hashmap_get(ref, "hello"), "final", "ref sees change");
+    ASSERT_STR_EQUAL((const char *)hashmap_get(clone, "hello"), "final", "clone sees same change");
+    
+    /* User owns memory - survives destroy */
+    char *k = malloc(20);
+    char *v = malloc(20);
+    strcpy(k, "malloc_key");
+    strcpy(v, "malloc_val");
+    hashmap_insert(ref, k, v);
+    
+    hashmap_destroy(clone);
+    hashmap_destroy(ref);
+    ASSERT_STR_EQUAL(k, "malloc_key", "key survives destroy");
+    ASSERT_STR_EQUAL(v, "malloc_val", "value survives destroy");
+    free(k);
+    free(v);
+    
+    return 1;
+}
+
+int test_hashmap_str_ref_any(void) {
+    HashMap *map = hashmap_str_ref_any(sizeof(int));
+    ASSERT_NOT_NULL(map, "hashmap_str_ref_any failed");
+    
+    /* Insert keys (ref) with values (owned) */
+    char key1[10] = "hello";
+    int val1 = 42;
+    char key2[10] = "world";
+    int val2 = 99;
+    hashmap_insert(map, key1, &val1);
+    hashmap_insert(map, key2, &val2);
+    
+    ASSERT_EQUAL(hashmap_len(map), 2, "wrong length");
+    
+    /* Verify values point to original memory (no copy) */
+    Iterator it = hashmap_iter(map);
+    const void *entry;
+    int count = 0;
+    while ((entry = iter_next(&it)) != NULL) {
+        const char *k = hashmap_entry_key(map, entry);
+        const int *v = hashmap_entry_value(map, entry);
+        if (strcmp(k, key1) == 0) {
+            ASSERT_PTR_EQUAL(k, key1, "key should point to same memory");
+            ASSERT_EQUAL(*v, val1, "values should be equal");
+            count++;
+        } else if (strcmp(k, key2) == 0) {
+            ASSERT_PTR_EQUAL(k, key2, "key should point to same memory");
+            ASSERT_EQUAL(*v, val2, "values should be equal");
+            count++;
+        }
+    }
+    ASSERT_EQUAL(count, 2, "found both entries");
+    
+    /* Clone preserves ref behavior for keys and values */
+    HashMap *clone = hashmap_clone(map);
+    ASSERT_NOT_NULL(clone, "clone failed");
+    ASSERT_EQUAL(hashmap_len(clone), 2, "clone length matches");
+    
+    it = hashmap_iter(clone);
+    count = 0;
+    while ((entry = iter_next(&it)) != NULL) {
+        const char *k = hashmap_entry_key(clone, entry);
+        const int *v = hashmap_entry_value(clone, entry);
+        if (strcmp(k, key1) == 0) {
+            ASSERT_PTR_EQUAL(k, key1, "key should point to same memory");
+            ASSERT_EQUAL(*v, val1, "values should be equal");
+            count++;
+        } else if (strcmp(k, key2) == 0) {
+            ASSERT_PTR_EQUAL(k, key2, "key should point to same memory");
+            ASSERT_EQUAL(*v, val2, "values should be equal");
+            count++;
+        }
+    }
+    ASSERT_EQUAL(count, 2, "clone has both entries");
+    
+    /* User owns keys - survives destroy */
+    char *k = malloc(20);
+    strcpy(k, "malloc_key");
+    int v = 77;
+    hashmap_insert(map, k, &v);
+    
+    hashmap_destroy(clone);
+    hashmap_destroy(map);
+    ASSERT_STR_EQUAL(k, "malloc_key", "key survives destroy");
+    free(k);
+    
+    return 1;
+}
+
+int test_hashmap_any_str_ref(void) {
+    HashMap *map = hashmap_any_str_ref(sizeof(int));
+    ASSERT_NOT_NULL(map, "hashmap_any_str_ref failed");
+    
+    /* Insert keys (owned) with values (ref) */
+    int key1 = 42;
+    char val1[10] = "hello";
+    int key2 = 99;
+    char val2[10] = "world";
+    hashmap_insert(map, &key1, val1);
+    hashmap_insert(map, &key2, val2);
+    
+    ASSERT_EQUAL(hashmap_len(map), 2, "wrong length");
+    
+    /* Verify values point to original memory (no copy) */
+    Iterator it = hashmap_iter(map);
+    const void *entry;
+    int count = 0;
+    while ((entry = iter_next(&it)) != NULL) {
+        const int *k = hashmap_entry_key(map, entry);
+        const char *v = hashmap_entry_value(map, entry);
+        if (*k == key1) {
+            ASSERT_PTR_EQUAL(v, val1, "value points to val1");
+            count++;
+        } else if (*k == key2) {
+            ASSERT_PTR_EQUAL(v, val2, "value points to val2");
+            count++;
+        }
+    }
+    ASSERT_EQUAL(count, 2, "found both entries");
+    
+    /* Clone preserves ref behavior for values */
+    HashMap *clone = hashmap_clone(map);
+    ASSERT_NOT_NULL(clone, "clone failed");
+    ASSERT_EQUAL(hashmap_len(clone), 2, "clone length matches");
+    
+    it = hashmap_iter(clone);
+    count = 0;
+    while ((entry = iter_next(&it)) != NULL) {
+        const int *k = hashmap_entry_key(clone, entry);
+        const char *v = hashmap_entry_value(clone, entry);
+        if (*k == key1) {
+            ASSERT_PTR_EQUAL(v, val1, "clone points to val1");
+            count++;
+        } else if (*k == key2) {
+            ASSERT_PTR_EQUAL(v, val2, "clone points to val2");
+            count++;
+        }
+    }
+    ASSERT_EQUAL(count, 2, "clone has both entries");
+    
+    /* User owns values - survives destroy */
+    int k = 77;
+    char *v = malloc(20);
+    strcpy(v, "malloc_val");
+    hashmap_insert(map, &k, v);
+    
+    hashmap_destroy(clone);
+    hashmap_destroy(map);
+    ASSERT_STR_EQUAL(v, "malloc_val", "value survives destroy");
+    free(v);
+    
+    return 1;
+}
+
+/* ============================================================================
  * Iterator Tests
  * ============================================================================ */
 
@@ -1078,6 +1259,11 @@ int main(void) {
     TEST(test_hashmap_keys);
     TEST(test_hashmap_values);
     TEST(test_hashmap_keys_str_str);
+
+    /* Ref */
+    TEST(test_hashmap_str_ref_str_ref);
+    TEST(test_hashmap_str_ref_any);
+    TEST(test_hashmap_any_str_ref);
 
     /* Iterator */
     TEST(test_hashmap_iterator);

@@ -43,6 +43,7 @@ struct LinkedListImpl {
     uint16_t item_offset;
     uint16_t item_size;
     uint32_t stride;
+    uint8_t owned;
 };
 
 /* Node structure */
@@ -77,7 +78,7 @@ static LinkedListEntry *linkedlist_entry_create(LinkedList *list, const void *it
     
     void *item_slot = lc_slot_at(entry->data, impl->item_offset);
     
-    if (lc_slot_init(item_slot, item, impl->item_size) != LC_OK) {
+    if (lc_slot_init(item_slot, item, impl->item_size, impl->owned) != LC_OK) {
         allocator_free(list->alloc, entry);
         return NULL;
     }
@@ -90,11 +91,8 @@ static LinkedListEntry *linkedlist_entry_create(LinkedList *list, const void *it
 /* Free node and its item */
 static void linkedlist_entry_free(LinkedList *list, LinkedListEntry *entry) {
     LinkedListImpl *impl = (LinkedListImpl *)list->impl;
-    if (impl->item_size == 0) {
-        void *item_slot = lc_slot_at(entry->data, impl->item_offset);
-        void *ptr = *(void **)item_slot;
-        if (ptr) free(ptr);
-    }
+    void *item_slot = lc_slot_at(entry->data, impl->item_offset);
+    lc_slot_free(item_slot, impl->item_size, impl->owned);
     allocator_free(list->alloc, entry);
     list->container.len--;
 }
@@ -176,6 +174,7 @@ static LinkedList *linkedlist_create_impl(const LinkedListBuilder *cfg, const Li
     impl->item_size = (uint16_t)cfg->item_size;
     impl->item_offset = layout->item_offset;
     impl->stride = layout->stride;
+    impl->owned = cfg->owned;
 
     ctx.list->container.items = ctx.ends;
     ctx.list->container.len = 0;
@@ -221,6 +220,7 @@ static LinkedList *linkedlist_create_from_impl(const LinkedList *src, bool share
     impl->item_size = src_impl->item_size;
     impl->item_offset = src_impl->item_offset;
     impl->stride = src_impl->stride;
+    impl->owned = src_impl->owned;
 
     ctx.list->container.items = ctx.ends;
     ctx.list->container.len = 0;
@@ -242,6 +242,7 @@ LinkedListBuilder linkedlist_builder(size_t item_size) {
         .item_align = 1,
         .alloc = NULL,
         .cmp = NULL,
+        .owned = 1,
     };
 }
 
@@ -251,6 +252,7 @@ LinkedListBuilder linkedlist_builder_str(void) {
         .item_align = 1,
         .alloc = NULL,
         .cmp = NULL,
+        .owned = 1,
     };
 }
 
@@ -266,6 +268,11 @@ LinkedListBuilder linkedlist_builder_allocator(LinkedListBuilder b, Allocator *a
 
 LinkedListBuilder linkedlist_builder_alignment(LinkedListBuilder b, size_t item_align) {
     b.item_align = item_align;
+    return b;
+}
+
+LinkedListBuilder linkedlist_builder_ref(LinkedListBuilder b, uint8_t owned) {
+    b.owned = owned;
     return b;
 }
 
@@ -298,6 +305,11 @@ LinkedList *linkedlist_create_aligned(size_t item_size, size_t item_align) {
 LinkedList *linkedlist_str(void) {
     return linkedlist_builder_build(linkedlist_builder_str());
 }
+
+LinkedList *linkedlist_str_ref(void) {
+    return linkedlist_builder_build(linkedlist_builder_ref(linkedlist_builder_str(), 0));
+}
+
 
 LinkedList *linkedlist_str_with_comparator(lc_Comparator cmp) {
     return linkedlist_builder_build(linkedlist_builder_comparator(linkedlist_builder_str(), cmp));
@@ -515,7 +527,7 @@ int linkedlist_set(LinkedList *list, size_t pos, const void *item) {
     }
 
     void *item_slot = lc_slot_at(runner->data, list->impl->item_offset);
-    int rc = lc_slot_set(item_slot, item, list->impl->item_size);
+    int rc = lc_slot_set(item_slot, item, list->impl->item_size, list->impl->owned);
     
     return rc;
 }

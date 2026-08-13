@@ -44,6 +44,7 @@ struct HashSetImpl {
     uint16_t item_offset;    /* offset from entry start to item data */
     uint16_t item_size;      /* 0 = string mode */
     uint32_t stride;         /* total entry size (including next pointer) */
+    uint8_t  owned;          /* 1 = container owns/copies strings, 0 = user owns/references */
 };
 
 /* Hash entry stored in buckets */
@@ -71,7 +72,7 @@ static HashSetEntry *hashset_entry_create(HashSet *set, const void *item) {
     
     void *item_slot = lc_slot_at(entry->data, impl->item_offset);
     
-    if (lc_slot_init(item_slot, item, impl->item_size) != LC_OK) {
+    if (lc_slot_init(item_slot, item, impl->item_size, impl->owned) != LC_OK) {
         allocator_free(set->alloc, entry);
         return NULL;
     }
@@ -87,7 +88,7 @@ static void hashset_entry_free(HashSet *set, HashSetEntry *entry) {
     HashSetImpl *impl = (HashSetImpl *)set->impl;
 
     void *item_slot = lc_slot_at(entry->data, impl->item_offset);
-    lc_slot_free(item_slot, impl->item_size);
+    lc_slot_free(item_slot, impl->item_size, impl->owned);
 
     allocator_free(set->alloc, entry);
     set->container.len--;
@@ -232,6 +233,7 @@ static HashSet *hashset_create_impl(const HashSetBuilder *cfg, const HashSetEntr
     impl->item_size = (uint16_t)cfg->item_size;
     impl->item_offset = layout->item_offset;
     impl->stride = layout->stride;
+    impl->owned = cfg->owned;
     
     ctx.set->container.items = ctx.buckets;
     ctx.set->container.len = 0;
@@ -281,6 +283,7 @@ static HashSet *hashset_create_from_impl(const HashSet *src, size_t capacity, bo
     impl->item_size = src_impl->item_size;
     impl->item_offset = src_impl->item_offset;
     impl->stride = src_impl->stride;
+    impl->owned = src_impl->owned;
   
     ctx.set->container.items = ctx.buckets;
     ctx.set->container.len = 0;
@@ -305,6 +308,7 @@ HashSetBuilder hashset_builder(size_t item_size) {
         .alloc = NULL,
         .cmp = NULL,
         .hash = NULL,
+        .owned = 1,
     };
 }
 
@@ -316,6 +320,7 @@ HashSetBuilder hashset_builder_str(void) {
         .alloc = NULL,
         .cmp = NULL,
         .hash = NULL,
+        .owned = 1,
     };
 }
 
@@ -341,6 +346,11 @@ HashSetBuilder hashset_builder_alignment(HashSetBuilder b, size_t item_align) {
 
 HashSetBuilder hashset_builder_allocator(HashSetBuilder b, Allocator *alloc) {
     b.alloc = alloc;
+    return b;
+}
+
+HashSetBuilder hashset_builder_ref(HashSetBuilder b, uint8_t owned) {
+    b.owned = owned;
     return b;
 }
 
@@ -386,6 +396,10 @@ HashSet *hashset_create_aligned(size_t item_size, size_t item_align) {
 
 HashSet *hashset_str(void) {
     return hashset_builder_build(hashset_builder_str());
+}
+
+HashSet *hashset_str_ref(void) {
+    return hashset_builder_build(hashset_builder_ref(hashset_builder_str(), 0));
 }
 
 HashSet *hashset_str_with_capacity(size_t capacity) {

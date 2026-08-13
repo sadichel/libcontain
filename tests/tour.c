@@ -236,7 +236,7 @@ static void demo_vector(void) {
     printf("Contains 25? %s\n", IntVector_contains(vec, 25) ? "yes" : "no");
 
     /* Pointer access */
-    int *ptr = IntVector_get_ptr(vec, 5);
+    int *ptr = IntVector_get_mut(vec, 5);
     if (ptr) {
         printf("Element at 5: %d\n", *ptr);
         *ptr = 888;
@@ -477,9 +477,9 @@ static void demo_hashset(void) {
     StringSet_insert(set, "banana");
 
     printf("Set contains: ");
-    Iterator it = StringSet_iter(set);
+    StringSetIterator it = StringSet_iter(set);
     const char *val;
-    while ((val = iter_next(&it))) {
+    while (StringSet_next(&it, &val)) {
         printf("%s ", val);
     }
     printf("\n");
@@ -490,7 +490,7 @@ static void demo_hashset(void) {
     StringSet_remove(set, "banana");
     printf("After remove 'banana': ");
     it = StringSet_iter(set);
-    while ((val = iter_next(&it))) {
+    while (StringSet_next(&it, &val)) {
         printf("%s ", val);
     }
     printf("\n");
@@ -503,7 +503,7 @@ static void demo_hashset(void) {
     StringSet_merge(set, set2);
     printf("After merge with {cherry,date,elderberry}: ");
     it = StringSet_iter(set);
-    while ((val = iter_next(&it))) {
+    while (StringSet_next(&it, &val)) {
         printf("%s ", val);
     }
     printf("\n");
@@ -515,7 +515,7 @@ static void demo_hashset(void) {
     StringSet *union_set = StringSet_union(set, set3);
     printf("Union with {fig,grape}: ");
     it = StringSet_iter(union_set);
-    while ((val = iter_next(&it))) {
+    while (StringSet_next(&it, &val)) {
         printf("%s ", val);
     }
     printf("\n");
@@ -524,7 +524,7 @@ static void demo_hashset(void) {
     StringSet *intersection = StringSet_intersection(set, set2);
     printf("Intersection with {cherry,date,elderberry}: ");
     it = StringSet_iter(intersection);
-    while ((val = iter_next(&it))) {
+    while (StringSet_next(&it, &val)) {
         printf("%s ", val);
     }
     printf("\n");
@@ -533,7 +533,7 @@ static void demo_hashset(void) {
     StringSet *diff = StringSet_difference(set, set2);
     printf("Difference (set \\ set2): ");
     it = StringSet_iter(diff);
-    while ((val = iter_next(&it))) {
+    while (StringSet_next(&it, &val)) {
         printf("%s ", val);
     }
     printf("\n");
@@ -593,11 +593,10 @@ static void demo_hashmap(void) {
     }
 
     printf("\nAll entries:\n");
-    Iterator it = WordCountMap_iter(map);
-    const void *entry;
-    while ((entry = iter_next(&it))) {
-        const char *key = WordCountMap_entry_key(map, entry);
-        int count = WordCountMap_entry_value(map, entry);
+    WordCountMapIterator it = WordCountMap_iter(map);
+    const char *key;
+    int count;
+    while (WordCountMap_next(&it, &key, &count)) {
         printf("  %s: %d\n", key, count);
     }
 
@@ -620,9 +619,7 @@ static void demo_hashmap(void) {
     WordCountMap_merge(map, map2);
     printf("\nAfter merge with {date:4, elderberry:6}:\n");
     it = WordCountMap_iter(map);
-    while ((entry = iter_next(&it))) {
-        const char *key = WordCountMap_entry_key(map, entry);
-        int count = WordCountMap_entry_value(map, entry);
+    while (WordCountMap_next(&it, &key, &count)) {
         printf("  %s: %d\n", key, count);
     }
 
@@ -687,11 +684,10 @@ static void demo_hashmap_str_str(void) {
 
     /* Iterate over all entries */
     printf("\nAll entries:\n");
-    Iterator it = StrStrMap_iter(map);
-    const void *entry;
-    while ((entry = iter_next(&it))) {
-        const char *key = StrStrMap_entry_key(map, entry);
-        const char *value = StrStrMap_entry_value(map, entry);
+    StrStrMapIterator it = StrStrMap_iter(map);
+    const char *key;
+    const char *value;
+    while (StrStrMap_next(&it, &key, &value)) {
         printf("  %s -> %s\n", key, value);
     }
 
@@ -719,9 +715,7 @@ static void demo_hashmap_str_str(void) {
     StrStrMap_merge(map, map2);
     printf("\nAfter merge with {occupation:Engineer, hobby:Reading}:\n");
     it = StrStrMap_iter(map);
-    while ((entry = iter_next(&it))) {
-        const char *key = StrStrMap_entry_key(map, entry);
-        const char *value = StrStrMap_entry_value(map, entry);
+    while (StrStrMap_next(&it, &key, &value)) {
         printf("  %s -> %s\n", key, value);
     }
 
@@ -856,7 +850,6 @@ static void demo_iterator_pipelines(void) {
 
     result = iter_collect(it);
     StringVector *result_strs = (StringVector *)result;
-
 
     printf("\nAfter remove_punct + to_upper:\n");
     for (size_t i = 0; i < StringVector_len(result_strs); i++) {
@@ -1010,11 +1003,10 @@ static void demo_word_frequency(void) {
     printf("  -------------------------------------\n");
 
     size_t shown = 0;
-    Iterator it2 = WordCountMap_iter(freq);
-    const void *entry;
-    while ((entry = iter_next(&it2)) && shown < 10) {
-        const char *word = WordCountMap_entry_key(freq, entry);
-        int count = WordCountMap_entry_value(freq, entry);
+    WordCountMapIterator it2 = WordCountMap_iter(freq);
+    const char *word;
+    int count;
+    while (WordCountMap_next(&it2, &word, &count) && shown < 10) {
         printf("  %3zu.  %-25s %d\n", ++shown, word, count);
     }
 

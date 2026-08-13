@@ -117,12 +117,16 @@ typedef struct LinkedList {
  *
  * @var LinkedListBuilder::cmp
  * Item comparator (NULL = memcmp for fixed-size, strcmp for strings)
+ * 
+ * @var LinkedListBuilder::owned
+ * 1 = container owns/copies strings, 0 = user owns/references
  */
 typedef struct {
     size_t item_size;      /**< 0 = string mode (stores char*) */
     size_t item_align;     /**< Item alignment (0 = default) */
     Allocator *alloc;      /**< Custom allocator (NULL = internal pool) */
     lc_Comparator cmp;     /**< Item comparator (NULL = memcmp/strcmp) */
+    uint8_t  owned;        /* 1 = container owns/copies strings, 0 = user owns/references */
 } LinkedListBuilder;
 
 /** @} */
@@ -182,6 +186,16 @@ LinkedList *linkedlist_create_aligned(size_t item_size, size_t item_align);
 LinkedList *linkedlist_str(void);
 
 /**
+ * @brief Create a new string linked list with string references
+ *
+ * Stores C strings as const char* pointers without copying.
+ * The caller must ensure the strings outlive the linked list.
+ *
+ * @return Newly allocated string linked list, or NULL on allocation failure
+ */
+LinkedList *linkedlist_str_ref(void);
+
+/**
  * @brief Create a new string linked list with a custom comparator
  *
  * @param cmp String comparator function (receives char**)
@@ -196,22 +210,6 @@ LinkedList *linkedlist_str_with_comparator(lc_Comparator cmp);
  * @return Newly allocated string linked list, or NULL on allocation failure
  */
 LinkedList *linkedlist_str_with_allocator(Allocator *alloc);
-
-/**
- * @brief Build a linked list using a fluent builder
- *
- * @param b Initialised LinkedListBuilder
- * @return Newly allocated linked list, or NULL on configuration or allocation failure
- *
- * @par Example
- * @code
- *   LinkedList *list = linkedlist_builder_build(
- *       linkedlist_builder_comparator(
- *           linkedlist_builder(sizeof(int)),
- *           my_compare_function));
- * @endcode
- */
-LinkedList *linkedlist_builder_build(LinkedListBuilder b);
 
 /**
  * @brief Destroy a linked list and free all resources
@@ -246,6 +244,84 @@ int linkedlist_set_comparator(LinkedList *list, lc_Comparator cmp);
  * @note Only allowed on empty lists.
  */
 int linkedlist_set_allocator(LinkedList *list, Allocator *alloc);
+
+/** @} */
+
+/**
+ * @defgroup linkedlist_builder Builder API
+ * @brief Fluent configuration builder for linkedlist creation
+ * @{
+ */
+
+/**
+ * @brief Create a new builder with default configuration
+ *
+ * @param item_size Size of each element in bytes (0 for string mode)
+ * @return Initialised LinkedListBuilder
+ */
+LinkedListBuilder linkedlist_builder(size_t item_size);
+
+/**
+ * @brief Create a builder for string mode
+ *
+ * @return Initialised LinkedListBuilder with item_size=0
+ */
+LinkedListBuilder linkedlist_builder_str(void);
+
+/**
+ * @brief Set custom comparator
+ *
+ * @param b   Builder
+ * @param cmp Element comparator (NULL = default)
+ * @return Updated builder
+ */
+LinkedListBuilder linkedlist_builder_comparator(LinkedListBuilder b, lc_Comparator cmp);
+
+/**
+ * @brief Set item alignment
+ *
+ * @param b          Builder
+ * @param item_align Item alignment (must be power of two)
+ * @return Updated builder
+ */
+LinkedListBuilder linkedlist_builder_alignment(LinkedListBuilder b, size_t item_align);
+
+/**
+ * @brief Set custom allocator
+ *
+ * @param b     Builder
+ * @param alloc Custom allocator
+ * @return Updated builder
+ */
+LinkedListBuilder linkedlist_builder_allocator(LinkedListBuilder b, Allocator *alloc);
+
+/**
+ * @brief Set string ownership mode
+ *
+ * For string mode (item_size == 0), controls whether libcontain manages
+ * memory (strdup/free) or user manages (reference only).
+ *
+ * @param b      Builder
+ * @param owned  1 = libcontain owns strings, 0 = user owns strings
+ * @return Updated builder
+ *
+ * @par Example
+ * @code
+ *   // Reference strings - user manages memory
+ *   LinkedListBuilder b = linkedlist_builder_str();
+ *   b = linkedlist_builder_ref(b, 0);
+ *   LinkedList *list = linkedlist_builder_build(b);
+ * @endcode
+ */
+LinkedListBuilder linkedlist_builder_ref(LinkedListBuilder b, uint8_t owned);
+
+/**
+ * @brief Build the linked list
+ *
+ * @param b Initialised LinkedListBuilder
+ * @return Newly allocated linked list, or NULL on failure
+ */
+LinkedList *linkedlist_builder_build(LinkedListBuilder b);
 
 /** @} */
 
@@ -754,6 +830,7 @@ struct LinkedListImpl {
     uint16_t item_offset;
     uint16_t item_size;
     uint32_t stride;
+    uint8_t owned;
 };
 
 /* Node structure */
@@ -788,7 +865,7 @@ static LinkedListEntry *linkedlist_entry_create(LinkedList *list, const void *it
     
     void *item_slot = lc_slot_at(entry->data, impl->item_offset);
     
-    if (lc_slot_init(item_slot, item, impl->item_size) != LC_OK) {
+    if (lc_slot_init(item_slot, item, impl->item_size, impl->owned) != LC_OK) {
         allocator_free(list->alloc, entry);
         return NULL;
     }
@@ -801,11 +878,8 @@ static LinkedListEntry *linkedlist_entry_create(LinkedList *list, const void *it
 /* Free node and its item */
 static void linkedlist_entry_free(LinkedList *list, LinkedListEntry *entry) {
     LinkedListImpl *impl = (LinkedListImpl *)list->impl;
-    if (impl->item_size == 0) {
-        void *item_slot = lc_slot_at(entry->data, impl->item_offset);
-        void *ptr = *(void **)item_slot;
-        if (ptr) free(ptr);
-    }
+    void *item_slot = lc_slot_at(entry->data, impl->item_offset);
+    lc_slot_free(item_slot, impl->item_size, impl->owned);
     allocator_free(list->alloc, entry);
     list->container.len--;
 }
@@ -887,6 +961,7 @@ static LinkedList *linkedlist_create_impl(const LinkedListBuilder *cfg, const Li
     impl->item_size = (uint16_t)cfg->item_size;
     impl->item_offset = layout->item_offset;
     impl->stride = layout->stride;
+    impl->owned = cfg->owned;
 
     ctx.list->container.items = ctx.ends;
     ctx.list->container.len = 0;
@@ -932,6 +1007,7 @@ static LinkedList *linkedlist_create_from_impl(const LinkedList *src, bool share
     impl->item_size = src_impl->item_size;
     impl->item_offset = src_impl->item_offset;
     impl->stride = src_impl->stride;
+    impl->owned = src_impl->owned;
 
     ctx.list->container.items = ctx.ends;
     ctx.list->container.len = 0;
@@ -953,6 +1029,7 @@ LinkedListBuilder linkedlist_builder(size_t item_size) {
         .item_align = 1,
         .alloc = NULL,
         .cmp = NULL,
+        .owned = 1,
     };
 }
 
@@ -962,6 +1039,7 @@ LinkedListBuilder linkedlist_builder_str(void) {
         .item_align = 1,
         .alloc = NULL,
         .cmp = NULL,
+        .owned = 1,
     };
 }
 
@@ -977,6 +1055,11 @@ LinkedListBuilder linkedlist_builder_allocator(LinkedListBuilder b, Allocator *a
 
 LinkedListBuilder linkedlist_builder_alignment(LinkedListBuilder b, size_t item_align) {
     b.item_align = item_align;
+    return b;
+}
+
+LinkedListBuilder linkedlist_builder_ref(LinkedListBuilder b, uint8_t owned) {
+    b.owned = owned;
     return b;
 }
 
@@ -1009,6 +1092,11 @@ LinkedList *linkedlist_create_aligned(size_t item_size, size_t item_align) {
 LinkedList *linkedlist_str(void) {
     return linkedlist_builder_build(linkedlist_builder_str());
 }
+
+LinkedList *linkedlist_str_ref(void) {
+    return linkedlist_builder_build(linkedlist_builder_ref(linkedlist_builder_str(), 0));
+}
+
 
 LinkedList *linkedlist_str_with_comparator(lc_Comparator cmp) {
     return linkedlist_builder_build(linkedlist_builder_comparator(linkedlist_builder_str(), cmp));
@@ -1226,7 +1314,7 @@ int linkedlist_set(LinkedList *list, size_t pos, const void *item) {
     }
 
     void *item_slot = lc_slot_at(runner->data, list->impl->item_offset);
-    int rc = lc_slot_set(item_slot, item, list->impl->item_size);
+    int rc = lc_slot_set(item_slot, item, list->impl->item_size, list->impl->owned);
     
     return rc;
 }

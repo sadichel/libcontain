@@ -9,27 +9,39 @@
  * @section example Usage Example
  * @code
  *   // Declare types at global scope
- *   DECL_DEQUE_TYPE(int, sizeof(int), IntDeque)
- *   DECL_DEQUE_TYPE(const char*, 0, StringDeque)
+ *   DECL_DEQUE_TYPE(int, sizeof(int), IntDeque)          // Fixed-size
+ *   DECL_DEQUE_TYPE(const char*, 0, StringDeque)         // Owned strings
+ *   DECL_DEQUE_REF_TYPE(const char*, 0, StringRefDeque)  // Reference strings
  *
  *   int main() {
- *       // Create typed deque directly (cast from generic)
- *       IntDeque *dq1 = (IntDeque*)deque_create(sizeof(int));
+ *       // Fixed-size
+ *       IntDeque *dq1 = IntDeque_create();
  *       IntDeque_push_back(dq1, 42);
  *       IntDeque_push_front(dq1, 10);
  *       int val = IntDeque_at(dq1, 0);  // 10, no cast!
  *
- *       // Or use convenience wrappers
- *       StringDeque *dq2 = StringDeque_create();
- *       StringDeque_push_back(dq2, "hello");
- *       const char *s = StringDeque_at(dq2, 0);  // "hello"
+ *       // Cast generic to typed (zero-cost)
+ *       IntDeque *dq2 = (IntDeque*)deque_create(sizeof(int));
+ *       IntDeque_push(dq2, &val);
+ *
+ *       // Owned strings - libcontain manages string memory
+ *       StringDeque *dq3 = StringDeque_create();
+ *       StringDeque_push_back(dq3, "hello");
+ *       const char *s1 = StringDeque_at(dq3, 0);  // "hello"
+ *
+ *       // Reference strings - user manages string memory
+ *       StringRefDeque *dq4 = StringRefDeque_create();
+ *       StringRefDeque_push_back(dq4, "hello");
+ *       const char *s2 = StringRefDeque_at(dq4, 0);  // "hello"
  *
  *       // Cast to generic when needed (zero-cost)
  *       Deque *raw = (Deque*)dq1;
  *       size_t len = deque_len(raw);
  *
  *       IntDeque_destroy(dq1);
- *       StringDeque_destroy(dq2);
+ *       IntDeque_destroy(dq2);
+ *       StringDeque_destroy(dq3);
+ *       StringRefDeque_destroy(dq4);
  *       return 0;
  *   }
  * @endcode
@@ -71,15 +83,21 @@
 #endif
 
 /**
- * @def DECL_DEQUE_TYPE
+ * @cond INTERNAL
+ * @def DEQUE_TYPE_IMPL
  * @brief Generate a type-safe deque wrapper for type T
  *
  * Creates a new type `name` that shares memory layout with Deque,
  * enabling zero-cost casting between typed and generic pointers.
  *
+ * For string mode (size == 0), the `owned` parameter controls memory management:
+ * - owned = 1: strdup on insert, free on destroy
+ * - owned = 0: pointer only, no copy/free
+ *
  * @param T    Element type (e.g., int, const char*, MyStruct)
  * @param size Size of T in bytes (0 for string mode)
  * @param name Name for the generated type (e.g., IntDeque)
+ * @param owned 1 = container owns/copies strings, 0 = user owns/references
  *
  * @par Design Note
  * The typed struct contains a single Deque pointer as its first member,
@@ -108,7 +126,9 @@
  *   - `T name##_at_or_default(const name *n, size_t idx, T default_val)`
  *   - `T name##_front(const name *n)`
  *   - `T name##_back(const name *n)`
- *   - `T* name##_get_ptr(name *n, size_t idx)`
+ *   - `T const *name##_get_ptr(const name *n, size_t idx)`
+ *   - `T *name##_get_mut(name *n, size_t idx)`
+ *   - `int name##_resize(name *n, size_t new_len)`
  *
  * **Removal**
  *   - `int name##_pop_back(name *n)`
@@ -137,6 +157,7 @@
  *   - `name *name##_clone(const name *n)`
  *   - `name *name##_slice(const name *n, size_t from, size_t to)`
  *   - `name *name##_instance(const name *n)`
+ *   - `T* name##_as_slice(name *n)`
  *
  * **Configuration**
  *   - `int name##_set_comparator(name *n, lc_Comparator cmp)`
@@ -147,8 +168,10 @@
  *   - `name *name##_wrap(Container *c)` — Cast from generic (zero-cost)
  *
  * **Iteration**
- *   - `Iterator name##_iter(const name *n)`
- *   - `Iterator name##_iter_reversed(const name *n)`
+ *   - `name##Iterator name##_iter(const name *n)`
+ *   - `name##Iterator name##_iter_reversed(const name *n)`
+ *   - `bool name##_next(name##Iterator *it, T *out)`
+ *   - `Iterator name##_as_iterator(name##Iterator it)`
  *
  * @warning T must be copyable by memcpy. For structs with pointers,
  *          use string mode (size=0) or implement manual deep copy.
@@ -158,9 +181,11 @@
  *
  * @note Panics (abort) in debug mode when preconditions are violated.
  *       Define CONTAINER_DEBUG to enable runtime checks.
+ *
+ * @endcond
  */
 
-#define DECL_DEQUE_TYPE(T, size, name)                                                                                                                                                  \
+#define DEQUE_TYPE_IMPL(T, size, name, owned)                                                                                                                                           \
     /* Compile-time size validation */                                                                                                                                                  \
     LC_STATIC_ASSERT((size) == 0 || (size) == sizeof(T),                                                                                                                                \
                      "libcontain: size must be 0 (string mode with T=const const char*) or sizeof(T) for fixed-size");                                                                  \
@@ -170,26 +195,39 @@
         Container base;                                                                                                                                                                 \
     } name;                                                                                                                                                                             \
                                                                                                                                                                                         \
+    /* Iterator type */                                                                                                                                                                 \
+    typedef struct name##Iterator {                                                                                                                                                     \
+        Iterator base;                                                                                                                                                                  \
+    } name##Iterator;                                                                                                                                                                   \
+                                                                                                                                                                                        \
     /* ===== Creation & Destruction ===== */                                                                                                                                            \
                                                                                                                                                                                         \
     /** @brief Create a new empty typed deque */                                                                                                                                        \
     static inline LC_UNUSED name *name##_create(void) {                                                                                                                                 \
-        return (name *)deque_create(size);                                                                                                                                              \
+        DequeBuilder b = deque_builder(size);                                                                                                                                           \
+        if (size == 0) b = deque_builder_ref(b, owned);                                                                                                                                 \
+        return (name *)deque_builder_build(b);                                                                                                                                          \
     }                                                                                                                                                                                   \
                                                                                                                                                                                         \
     /** @brief Create a new typed deque with specified initial capacity */                                                                                                              \
     static inline LC_UNUSED name *name##_create_with_capacity(size_t cap) {                                                                                                             \
-        return (name *)deque_create_with_capacity(size, cap);                                                                                                                           \
+        DequeBuilder b = deque_builder_capacity(deque_builder(size), cap);                                                                                                              \
+        if (size == 0) b = deque_builder_ref(b, owned);                                                                                                                                 \
+        return (name *)deque_builder_build(b);                                                                                                                                          \
     }                                                                                                                                                                                   \
                                                                                                                                                                                         \
     /** @brief Create a new typed deque with a custom comparator */                                                                                                                     \
     static inline LC_UNUSED name *name##_create_with_comparator(lc_Comparator cmp) {                                                                                                    \
-        return (name *)deque_create_with_comparator(size, cmp);                                                                                                                         \
+        DequeBuilder b = deque_builder_comparator(deque_builder(size), cmp);                                                                                                            \
+        if (size == 0) b = deque_builder_ref(b, owned);                                                                                                                                 \
+        return (name *)deque_builder_build(b);                                                                                                                                          \
     }                                                                                                                                                                                   \
                                                                                                                                                                                         \
     /** @brief Create a new typed deque with aligned elements */                                                                                                                        \
     static inline LC_UNUSED name *name##_create_aligned(size_t align) {                                                                                                                 \
-        return (name *)deque_create_aligned(size, align);                                                                                                                               \
+        DequeBuilder b = deque_builder_alignment(deque_builder(size), align);                                                                                                           \
+        if (size == 0) b = deque_builder_ref(b, owned);                                                                                                                                 \
+        return (name *)deque_builder_build(b);                                                                                                                                          \
     }                                                                                                                                                                                   \
                                                                                                                                                                                         \
     /** @brief Destroy a typed deque and free all resources */                                                                                                                          \
@@ -391,11 +429,25 @@
         size_t _tail = (_d->head + _d->container.len - 1) >= _d->container.capacity ? (_d->head + _d->container.len - 1) - _d->container.capacity : (_d->head + _d->container.len - 1); \
         return ((T *)_d->container.items)[_tail];                                                                                                                                       \
     }                                                                                                                                                                                   \
-    /** @brief Get pointer to element (NULL if out of bounds) */                                                                                                                        \
-    static inline LC_UNUSED T *name##_get_ptr(name *n, size_t idx) {                                                                                                                    \
+                                                                                                                                                                                        \
+    /** @brief Get a read-only pointer to element (NULL if out of bounds) */                                                                                                            \
+    static inline LC_UNUSED T const *name##_get_ptr(const name *n, size_t idx) {                                                                                                        \
         LC_DEQ_DEBUG_NULL(n, #name "_get_ptr");                                                                                                                                         \
         if (idx >= deque_len((Deque *)n)) return NULL;                                                                                                                                  \
+        return (T const *)deque_at((Deque *)n, idx);                                                                                                                                    \
+    }                                                                                                                                                                                   \
+                                                                                                                                                                                        \
+    /** @brief Get a mutable pointer to element (NULL if out of bounds) */                                                                                                              \
+    static inline LC_UNUSED T *name##_get_mut(name *n, size_t idx) {                                                                                                                    \
+        LC_DEQ_DEBUG_NULL(n, #name "_get_mut");                                                                                                                                         \
+        if (idx >= deque_len((Deque *)n)) return NULL;                                                                                                                                  \
         return (T *)deque_at_mut((Deque *)n, idx);                                                                                                                                      \
+    }                                                                                                                                                                                   \
+                                                                                                                                                                                        \
+    /** @brief Get a pointer to the underlying array */                                                                                                                                 \
+    static inline LC_UNUSED T *name##_as_slice(name *n) {                                                                                                                               \
+        LC_DEQ_DEBUG_NULL(n, #name "_as_slice");                                                                                                                                        \
+        return (T *)deque_as_slice((Deque *)n);                                                                                                                                         \
     }                                                                                                                                                                                   \
                                                                                                                                                                                         \
     /* ===== Removal ===== */                                                                                                                                                           \
@@ -436,6 +488,12 @@
     static inline LC_UNUSED int name##_reserve(name *n, size_t expected_capacity) {                                                                                                     \
         LC_DEQ_DEBUG_NULL(n, #name "_reserve");                                                                                                                                         \
         return deque_reserve((Deque *)n, expected_capacity);                                                                                                                            \
+    }                                                                                                                                                                                   \
+                                                                                                                                                                                        \
+    /** @brief Resize the deque to a new length. */                                                                                                                                     \
+    static inline LC_UNUSED int name##_resize(name *n, size_t new_len) {                                                                                                                \
+        LC_DEQ_DEBUG_NULL(n, #name "_resize");                                                                                                                                          \
+        return deque_resize((Deque *)n, new_len);                                                                                                                                       \
     }                                                                                                                                                                                   \
                                                                                                                                                                                         \
     /** @brief Shrink capacity to fit current length */                                                                                                                                 \
@@ -496,15 +554,62 @@
     /* ===== Iteration ===== */                                                                                                                                                         \
                                                                                                                                                                                         \
     /** @brief Create a forward iterator over the deque */                                                                                                                              \
-    static inline LC_UNUSED Iterator name##_iter(const name *n) {                                                                                                                       \
+    static inline LC_UNUSED name##Iterator name##_iter(const name *n) {                                                                                                                 \
         LC_DEQ_DEBUG_NULL(n, #name "_iter");                                                                                                                                            \
-        return deque_iter((Deque *)n);                                                                                                                                                  \
+        return (name##Iterator){ .base = deque_iter((Deque *)n) };                                                                                                                      \
     }                                                                                                                                                                                   \
                                                                                                                                                                                         \
     /** @brief Create a reverse iterator over the deque */                                                                                                                              \
-    static inline LC_UNUSED Iterator name##_iter_reversed(const name *n) {                                                                                                              \
+    static inline LC_UNUSED name##Iterator name##_iter_reversed(const name *n) {                                                                                                        \
         LC_DEQ_DEBUG_NULL(n, #name "_iter_reversed");                                                                                                                                   \
-        return deque_iter_reversed((Deque *)n);                                                                                                                                         \
+        return (name##Iterator){ .base = deque_iter_reversed((Deque *)n) };                                                                                                             \
+    }                                                                                                                                                                                   \
+                                                                                                                                                                                        \
+    /** @brief Get the underlying iterator */                                                                                                                                           \
+    static inline LC_UNUSED Iterator name##_as_iterator(name##Iterator it) {                                                                                                            \
+        return it.base;                                                                                                                                                                 \
+    }                                                                                                                                                                                   \
+                                                                                                                                                                                        \
+    /** @brief Get the next element */                                                                                                                                                  \
+    static inline LC_UNUSED bool name##_next(name##Iterator *it, T *out) {                                                                                                              \
+        LC_DEQ_DEBUG_NULL(it, #name "_next");                                                                                                                                           \
+        LC_DEQ_DEBUG_NULL(out, #name "_next");                                                                                                                                          \
+        const void *ptr = iter_next(&it->base);                                                                                                                                         \
+        if (!ptr) return false;                                                                                                                                                         \
+        if (size == 0) {                                                                                                                                                                \
+            *(const void **)out = ptr;                                                                                                                                                  \
+        } else {                                                                                                                                                                        \
+            memcpy(out, ptr, sizeof(T));                                                                                                                                                \
+        }                                                                                                                                                                               \
+        return true;                                                                                                                                                                    \
     }
+
+/**
+ * @brief Declare a type-safe deque
+ *
+ * For string mode (size == 0), libcontain manages memory:
+ * - strdup on insert
+ * - free on destroy
+ *
+ * For fixed-size types (size > 0), ownership is ignored.
+ *
+ * @param T    Element type
+ * @param size Size of T in bytes (0 for string mode)
+ * @param name Name for the generated type
+ */
+#define DECL_DEQUE_TYPE(T, size, name) \
+    DEQUE_TYPE_IMPL(T, size, name, 1)
+
+/**
+ * @brief Declare a type-safe deque with explicit ownership control
+ *
+ * @param T      Element type
+ * @param size   Size of T in bytes (0 for string mode)
+ * @param name   Name for the generated type
+ * @param owned  1 = libcontain owns strings (strdup/free),
+ *               0 = user owns strings (reference only)
+ */
+#define DECL_DEQUE_REF_TYPE(T, size, name, owned) \
+    DEQUE_TYPE_IMPL(T, size, name, owned)
 
 #endif /* CONTAIN_TYPED_DEQUE_PDR_H */

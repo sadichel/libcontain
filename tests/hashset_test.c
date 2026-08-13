@@ -712,6 +712,64 @@ int test_hashset_set_ops_strings(void) {
 }
 
 /* ============================================================================
+ * String Ref Tests
+ * ============================================================================ */
+
+int test_hashset_str_ref(void) {
+    HashSet *ref = hashset_str_ref();
+    ASSERT_NOT_NULL(ref, "hashset_str_ref failed");
+    
+    char str1[10] = "hello";
+    char str2[10] = "world";
+    hashset_insert(ref, str1);
+    hashset_insert(ref, str2);
+    
+    /* Verify ref points to original memory */
+    Iterator it = hashset_iter(ref);
+    const char *str;
+    int count = 0;
+    while ((str = iter_next(&it))) {
+        if (strcmp(str, str1) == 0) {
+            ASSERT_PTR_EQUAL(str, str1, "ref should point to str1");
+            count++;
+        } else if (strcmp(str, str2) == 0) {
+            ASSERT_PTR_EQUAL(str, str2, "ref should point to str2");
+            count++;
+        }
+    }
+    ASSERT_EQUAL(count, 2, "should have both strings");
+    
+    /* Clone should point to same memory */
+    HashSet *clone = hashset_clone(ref);
+    ASSERT_NOT_NULL(clone, "clone failed");
+    
+    it = hashset_iter(clone);
+    count = 0;
+    while ((str = iter_next(&it))) {
+        if (strcmp(str, str1) == 0) {
+            ASSERT_PTR_EQUAL(str, str1, "clone should point to str1");
+            count++;
+        } else if (strcmp(str, str2) == 0) {
+            ASSERT_PTR_EQUAL(str, str2, "clone should point to str2");
+            count++;
+        }
+    }
+    ASSERT_EQUAL(count, 2, "clone should have both strings");
+    
+    /* User owns memory - survives destroy */
+    char *str3 = malloc(10);
+    strcpy(str3, "malloced");
+    hashset_insert(ref, str3);
+    
+    hashset_destroy(clone);
+    hashset_destroy(ref);
+    ASSERT_STR_EQUAL(str3, "malloced", "string survives destroy");
+    free(str3);
+    
+    return 1;
+}
+
+/* ============================================================================
  * To Array Tests
  * ============================================================================ */
 
@@ -961,6 +1019,9 @@ int main(void) {
     TEST(test_hashset_intersection);
     TEST(test_hashset_difference);
     TEST(test_hashset_set_ops_strings);
+
+    /* String Ref */
+    TEST(test_hashset_str_ref);
 
     /* To Array */
     TEST(test_hashset_to_array);

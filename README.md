@@ -130,6 +130,7 @@ This is the magic of the C inheritance pattern — zero overhead, fully safe.
 - Chainer — Zero-overhead fused pipelines with reuse
 - Type-safe wrappers — DECL_VECTOR_TYPE(int, sizeof(int), IntVector)
 - First-class strings — item_size == 0 handles strdup/free automatically
+- String Reference - item_size == 0 && owned == 0 (no strdup/free on insert/remove)
 - Aligned allocation — SIMD, cache-line, atomics
 - Pool allocators — Reduced malloc overhead for node-based containers
 - Custom comparators & hashers — User-defined comparison and hash functions
@@ -157,12 +158,11 @@ Iterator *it = IntoIter((Container*)tokens);
 it = iter_filter(it, is_not_stopword);
 iter_fold(it, freq, count_words);
 
-Iterator it2 = WordCount_iter(freq);
-const void *entry;
-while ((entry = iter_next(&it2))) {
-    printf("%s: %d\n",
-           WordCount_entry_key(freq, entry),
-           WordCount_entry_value(freq, entry));
+WordCountIterator it2 = WordCount_iter(freq);
+const char *key;
+int val;
+while ((WordCount_next(it2, &key, &val))) {
+    printf("%s: %d\n", key, val);
 }
 ```
 

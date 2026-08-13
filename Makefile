@@ -154,9 +154,6 @@ $(TOUR): $(TOUR_SRC) $(LIBRARY) | $(BUILD_DIR)/tests
 	@echo "  Run ./$(TOUR) to see the complete demo"
 	@echo "========================================="
 
-$(BUILD_DIR)/tests:
-	mkdir -p $@
-
 run-tour: tour
 	./$(TOUR)
 

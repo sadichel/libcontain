@@ -56,12 +56,11 @@ int main(void) {
     iter_fold(it, freq, count_word);
 
     /* Print results */
-    Iterator it2 = WordCount_iter(freq);
-    const void *entry;
-    while ((entry = iter_next(&it2))) {
-        printf("%s: %d\n",
-               WordCount_entry_key(freq, entry),
-               WordCount_entry_value(freq, entry));
+    WordCountIterator it2 = WordCount_iter(freq);
+    const char *key;
+    int val;
+    while ((WordCount_next(&it2, &key, &val))) {
+        printf("%s: %d\n", key, val);
     }
 
     WordCount_destroy(freq);

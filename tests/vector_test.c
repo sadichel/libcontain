@@ -702,6 +702,55 @@ int test_vector_equals_strings_different_order(void) {
 }
 
 /* ============================================================================
+ * String Ref Tests
+ * ============================================================================ */
+
+int test_vector_str_ref(void) {
+    Vector *ref = vector_str_ref();
+    ASSERT_NOT_NULL(ref, "vector_str_ref failed");
+    
+    /* Push and access */
+    const char *s = "hello";
+    vector_push(ref, s);
+    ASSERT_STR_EQUAL((char *)vector_at(ref, 0), "hello", "wrong value");
+    
+    /* Same memory test - modify original */
+    char str[10] = "world";
+    vector_push(ref, str);
+    char *vstr = (char *)vector_at(ref, 1);
+    strcpy(str, "goodbye");
+    ASSERT_STR_EQUAL(vstr, "goodbye", "ref should point to same memory");
+    
+    /* Clone - should point to same strings */
+    Vector *clone = vector_clone(ref);
+    ASSERT_NOT_NULL(clone, "clone failed");
+    ASSERT_STR_EQUAL((char *)vector_at(clone, 0), "hello", "clone wrong");
+    
+    /* Modify original string through ref */
+    strcpy(str, "final");
+    ASSERT_STR_EQUAL((char *)vector_at(ref, 1), "final", "ref sees change");
+    ASSERT_STR_EQUAL((char *)vector_at(clone, 1), "final", "clone sees same change - same memory!");
+    
+    /* Append ref to owned */
+    Vector *owned = vector_str();
+    vector_push(owned, "owned");
+    vector_append(owned, ref);
+    ASSERT_STR_EQUAL((char *)vector_at(owned, 1), "hello", "append from ref failed");
+    
+    /* No free - user owns memory */
+    char *str2 = malloc(10);
+    strcpy(str2, "malloced");
+    vector_push(ref, str2);
+    vector_destroy(ref);
+    ASSERT_STR_EQUAL(str2, "malloced", "user string should still be valid");
+    free(str2);
+    
+    vector_destroy(owned);
+    vector_destroy(clone);
+    return 1;
+}
+
+/* ============================================================================
  * Iterator Tests
  * ============================================================================ */
 
@@ -1170,6 +1219,9 @@ int main(void) {
     TEST(test_vector_equals_different_values);
     TEST(test_vector_equals_strings_same_order);
     TEST(test_vector_equals_strings_different_order);
+
+    /* String Ref */
+    TEST(test_vector_str_ref);
 
     /* Iterator */
     TEST(test_vector_iterator);

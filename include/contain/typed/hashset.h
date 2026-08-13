@@ -3,34 +3,45 @@
  * libcontain - https://github.com/sadichel/libcontain
  *
  * This header provides macro-based type-safe wrappers around the generic
- * HashSet API. Use DECL_HASHSET_TYPE to generate a type-specific hash set
- * interface with proper return types (no casting required).
+ * HashSet API. Uses zero-cost overlay design where the typed struct shares
+ * the same memory layout as Container, enabling direct casting.
  *
  * @section example Usage Example
  * @code
  *   // Declare types at global scope
- *   DECL_HASHSET_TYPE(int, sizeof(int), IntSet)
- *   DECL_HASHSET_TYPE(char*, 0, StringSet)
+ *   DECL_HASHSET_TYPE(int, sizeof(int), IntSet)             // Fixed-size
+ *   DECL_HASHSET_TYPE(char*, 0, StringSet)                  // Owned strings
+ *   DECL_HASHSET_REF_TYPE(const char*, 0, StringRefSet, 0)  // Reference strings
  *
  *   int main() {
- *       // Create typed set directly (cast from generic)
- *       IntSet *set1 = (IntSet*)hashset_create(sizeof(int));
+ *       // Fixed-size
+ *       IntSet *set1 = IntSet_create();
  *       IntSet_insert(set1, 42);
  *       IntSet_insert(set1, 100);
  *       bool has = IntSet_contains(set1, 42);  // true
  *
- *       // Or use convenience wrappers
- *       StringSet *set2 = StringSet_create();
- *       StringSet_insert(set2, "hello");
- *       StringSet_insert(set2, "world");
- *       bool found = StringSet_contains(set2, "hello");  // true
+ *       // Cast generic to typed (zero-cost)
+ *       IntSet *set2 = (IntSet*)hashset_create(sizeof(int));
+ *       IntSet_insert(set2, 42);
+ *
+ *       // Owned strings - libcontain manages string memory
+ *       StringSet *set3 = StringSet_create();
+ *       StringSet_insert(set3, "hello");
+ *       const char *s1 = StringSet_at(set3, 0);  // "hello"
+ *
+ *       // Reference strings - user manages string memory
+ *       StringRefSet *set4 = StringRefSet_create();
+ *       StringRefSet_insert(set4, "hello");
+ *       const char *s2 = StringRefSet_at(set4, 0);  // "hello"
  *
  *       // Cast to generic when needed (zero-cost)
  *       HashSet *raw = (HashSet*)set1;
  *       size_t len = hashset_len(raw);
  *
  *       IntSet_destroy(set1);
- *       StringSet_destroy(set2);
+ *       IntSet_destroy(set2);
+ *       StringSet_destroy(set3);
+ *       StringRefSet_destroy(set4);
  *       return 0;
  *   }
  * @endcode
@@ -65,15 +76,21 @@
 #endif
 
 /**
- * @def DECL_HASHSET_TYPE
+ * @cond INTERNAL
+ * @def HASHSET_TYPE_IMPL
  * @brief Generate a type-safe hash set wrapper for type T
  *
  * Creates a new type `name` that shares memory layout with HashSet,
  * enabling zero-cost casting between typed and generic pointers.
  *
+ *  * For string mode (size == 0), the `owned` parameter controls memory management:
+ * - owned = 1: strdup on insert, free on destroy
+ * - owned = 0: pointer only, no copy/free
+ *
  * @param T    Element type (e.g., int, const char*, MyStruct)
  * @param size Size of T in bytes (0 for string mode)
  * @param name Name for the generated type (e.g., IntSet)
+ * @param owned 1 = container owns/copies strings, 0 = user owns/references
  *
  * @par Design Note
  * The typed struct contains a single HashSet pointer as its first member,
@@ -131,7 +148,9 @@
  *
  * **Export & Iteration**
  *   - `Array *name##_to_array(const name *n)`
- *   - `Iterator name##_iter(const name *n)`
+ *   - `name##Iterator name##_iter(const name *n)`
+ *   - `bool name##_next(name##Iterator *it, T *out)`
+ *   - `Iterator name##_as_iterator(name##Iterator it)`
  *
  * @warning T must be copyable by memcpy. For structs with pointers,
  *          use string mode (size=0) or implement manual deep copy.
@@ -141,8 +160,10 @@
  *
  * @note Panics (abort) in debug mode when preconditions are violated.
  *       Define CONTAINER_DEBUG to enable runtime checks.
+ *
+ * @endcond
  */
-#define DECL_HASHSET_TYPE(T, size, name)                                                                         \
+#define HASHSET_TYPE_IMPL(T, size, name, owned)                                                                  \
     /* Compile-time size validation */                                                                           \
     LC_STATIC_ASSERT((size) == 0 || (size) == sizeof(T),                                                         \
                      "libcontain: size must be 0 (string mode with T=const char*) or sizeof(T) for fixed-size"); \
@@ -152,31 +173,46 @@
         Container base;                                                                                          \
     } name;                                                                                                      \
                                                                                                                  \
+    /* Iterator type */                                                                                          \
+    typedef struct name##Iterator {                                                                              \
+        Iterator base;                                                                                           \
+    } name##Iterator;                                                                                            \
+                                                                                                                 \
     /* ===== Creation & Destruction ===== */                                                                     \
                                                                                                                  \
     /** @brief Create a new empty typed hash set */                                                              \
     static inline LC_UNUSED name *name##_create(void) {                                                          \
-        return (name *)hashset_create(size);                                                                     \
+        HashSetBuilder b = hashset_builder(size);                                                                \
+        if (size == 0) b = hashset_builder_ref(b, owned);                                                        \
+        return (name *)hashset_builder_build(b);                                                                 \
     }                                                                                                            \
                                                                                                                  \
     /** @brief Create a new typed hash set with specified initial bucket count */                                \
     static inline LC_UNUSED name *name##_create_with_capacity(size_t cap) {                                      \
-        return (name *)hashset_create_with_capacity(size, cap);                                                  \
+        HashSetBuilder b = hashset_builder_capacity(hashset_builder(size), cap);                                 \
+        if (size == 0) b = hashset_builder_ref(b, owned);                                                        \
+        return (name *)hashset_builder_build(b);                                                                 \
     }                                                                                                            \
                                                                                                                  \
     /** @brief Create a new typed hash set with a custom hash function */                                        \
     static inline LC_UNUSED name *name##_create_with_hasher(lc_Hasher hasher) {                                  \
-        return (name *)hashset_create_with_hasher(size, hasher);                                                 \
+        HashSetBuilder b = hashset_builder_hasher(hashset_builder(size), hasher);                                \
+        if (size == 0) b = hashset_builder_ref(b, owned);                                                        \
+        return (name *)hashset_builder_build(b);                                                                 \
     }                                                                                                            \
                                                                                                                  \
     /** @brief Create a new typed hash set with a custom comparator */                                           \
     static inline LC_UNUSED name *name##_create_with_comparator(lc_Comparator cmp) {                             \
-        return (name *)hashset_create_with_comparator(size, cmp);                                                \
+        HashSetBuilder b = hashset_builder_comparator(hashset_builder(size), cmp);                               \
+        if (size == 0) b = hashset_builder_ref(b, owned);                                                        \
+        return (name *)hashset_builder_build(b);                                                                 \
     }                                                                                                            \
                                                                                                                  \
     /** @brief Create a new typed hash set with aligned elements */                                              \
     static inline LC_UNUSED name *name##_create_aligned(size_t align) {                                          \
-        return (name *)hashset_create_aligned(size, align);                                                      \
+        HashSetBuilder b = hashset_builder_alignment(hashset_builder(size), align);                              \
+        if (size == 0) b = hashset_builder_ref(b, owned);                                                        \
+        return (name *)hashset_builder_build(b);                                                                 \
     }                                                                                                            \
                                                                                                                  \
     /** @brief Destroy a typed hash set and free all resources */                                                \
@@ -359,9 +395,28 @@
     }                                                                                                            \
                                                                                                                  \
     /** @brief Create a forward iterator over the hash set */                                                    \
-    static inline LC_UNUSED Iterator name##_iter(const name *n) {                                                \
+    static inline LC_UNUSED name##Iterator name##_iter(const name *n) {                                          \
         LC_SET_DEBUG_NULL(n, #name "_iter");                                                                     \
-        return hashset_iter((HashSet *)n);                                                                       \
+        return (name##Iterator){ .base = hashset_iter((HashSet *)n) };                                           \
+    }                                                                                                            \
+                                                                                                                 \
+    /** @brief Get the underlying iterator */                                                                    \
+    static inline LC_UNUSED Iterator name##_as_iterator(name##Iterator it) {                                     \
+        return it.base;                                                                                          \
+    }                                                                                                            \
+                                                                                                                 \
+    /** @brief Get the next element */                                                                           \
+    static inline LC_UNUSED bool name##_next(name##Iterator *it, T *out) {                                       \
+        LC_SET_DEBUG_NULL(it, #name "_next");                                                                    \
+        LC_SET_DEBUG_NULL(out, #name "_next");                                                                   \
+        const void *ptr = iter_next(&it->base);                                                                  \
+        if (!ptr) return false;                                                                                  \
+        if (size == 0) {                                                                                         \
+            *(const void **)out = ptr;                                                                           \
+        } else {                                                                                                 \
+            memcpy(out, ptr, sizeof(T));                                                                         \
+        }                                                                                                        \
+        return true;                                                                                             \
     }                                                                                                            \
                                                                                                                  \
     /** @brief Swap contents of two typed hash sets */                                                           \
@@ -371,5 +426,33 @@
         *a = *b;                                                                                                 \
         *b = tmp;                                                                                                \
     }
+
+/**
+ * @brief Declare a type-safe hashset
+ *
+ * For string mode (size == 0), libcontain manages memory:
+ * - strdup on insert
+ * - free on destroy
+ *
+ * For fixed-size types (size > 0), ownership is ignored.
+ *
+ * @param T    Element type
+ * @param size Size of T in bytes (0 for string mode)
+ * @param name Name for the generated type
+ */
+#define DECL_HASHSET_TYPE(T, size, name) \
+    HASHSET_TYPE_IMPL(T, size, name, 1)
+
+/**
+ * @brief Declare a type-safe hashset with explicit ownership control
+ *
+ * @param T      Element type
+ * @param size   Size of T in bytes (0 for string mode)
+ * @param name   Name for the generated type
+ * @param owned  1 = libcontain owns strings (strdup/free),
+ *               0 = user owns strings (reference only)
+ */
+#define DECL_HASHSET_REF_TYPE(T, size, name, owned) \
+    HASHSET_TYPE_IMPL(T, size, name, owned)
 
 #endif /* CONTAIN_TYPED_HASHSET_PDR_H */

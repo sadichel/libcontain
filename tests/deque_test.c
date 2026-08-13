@@ -972,6 +972,55 @@ int test_deque_equals_strings_different_order(void) {
 }
 
 /* ============================================================================
+ * String Ref Tests
+ * ============================================================================ */
+
+int test_deque_str_ref(void) {
+    Deque *ref = deque_str_ref();
+    ASSERT_NOT_NULL(ref, "deque_str_ref failed");
+    
+    /* Push and access */
+    const char *s = "hello";
+    deque_push_back(ref, s);
+    ASSERT_STR_EQUAL((char *)deque_at(ref, 0), "hello", "wrong value");
+    
+    /* Same memory test - modify original */
+    char str[10] = "world";
+    deque_push_back(ref, str);
+    char *vstr = (char *)deque_at(ref, 1);
+    strcpy(str, "goodbye");
+    ASSERT_STR_EQUAL(vstr, "goodbye", "ref should point to same memory");
+    
+    /* Clone - should point to same strings */
+    Deque *clone = deque_clone(ref);
+    ASSERT_NOT_NULL(clone, "clone failed");
+    ASSERT_STR_EQUAL((char *)deque_at(clone, 0), "hello", "clone wrong");
+    
+    /* Modify original string through ref */
+    strcpy(str, "final");
+    ASSERT_STR_EQUAL((char *)deque_at(ref, 1), "final", "ref sees change");
+    ASSERT_STR_EQUAL((char *)deque_at(clone, 1), "final", "clone sees same change - same memory!");
+    
+    /* Append ref to owned */
+    Deque *owned = deque_str();
+    deque_push_back(owned, "owned");
+    deque_append(owned, ref);
+    ASSERT_STR_EQUAL((char *)deque_at(owned, 1), "hello", "append from ref failed");
+    
+    /* No free - user owns memory */
+    char *str2 = malloc(10);
+    strcpy(str2, "malloced");
+    deque_push_back(ref, str2);
+    deque_destroy(ref);
+    ASSERT_STR_EQUAL(str2, "malloced", "user string should still be valid");
+    free(str2);
+    
+    deque_destroy(owned);
+    deque_destroy(clone);
+    return 1;
+}
+
+/* ============================================================================
  * Iterator Tests
  * ============================================================================ */
 
@@ -1320,6 +1369,9 @@ int main(void) {
     TEST(test_deque_equals_different_values);
     TEST(test_deque_equals_strings_same_order);
     TEST(test_deque_equals_strings_different_order);
+
+    /* String Ref */
+    TEST(test_deque_str_ref);
 
     /* Iterator */
     TEST(test_deque_iterator);

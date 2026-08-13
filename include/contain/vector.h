@@ -94,12 +94,16 @@ typedef struct Vector {
  *
  * @var VectorBuilder::cmp
  * Item comparator (NULL = memcmp for fixed-size, strcmp for strings)
+ * 
+ * @var VectorBuilder::owned
+ * 1 = container owns/copies strings, 0 = user owns/references
  */
 typedef struct {
     size_t item_size;      /**< 0 = string mode (stores char*) */
     size_t base_align;     /**< Alignment for first element (0 = default) */
     size_t capacity;       /**< Initial capacity (rounded up to MIN) */
-    lc_Comparator cmp;        /**< Item comparator (NULL = memcmp for POD and strcmp for string) */
+    lc_Comparator cmp;     /**< Item comparator (NULL = memcmp for POD and strcmp for string) */
+    uint8_t owned;         /**< 1 = container owns/copies strings, 0 = user owns/references */
 } VectorBuilder;
 
 /** @} */
@@ -162,6 +166,16 @@ Vector *vector_create_aligned(size_t item_size, size_t base_align);
 Vector *vector_str(void);
 
 /**
+ * @brief Create a new string vector with string references
+ *
+ * Stores C strings as const char* pointers without copying.
+ * The caller must ensure the strings outlive the vector.
+ *
+ * @return Newly allocated string vector, or NULL on allocation failure
+ */
+Vector *vector_str_ref(void);
+
+/**
  * @brief Create a new string vector with specified initial capacity
  *
  * @param capacity Initial capacity
@@ -176,23 +190,6 @@ Vector *vector_str_with_capacity(size_t capacity);
  * @return Newly allocated string vector, or NULL on allocation failure
  */
 Vector *vector_str_with_comparator(lc_Comparator cmp);
-
-/**
- * @brief Build a vector using a fluent builder
- *
- * @param b Initialised VectorBuilder
- * @return Newly allocated vector, or NULL on configuration or allocation failure
- *
- * @par Example
- * @code
- *   Vector *vec = vector_builder_build(
- *       vector_builder_alignment(
- *           vector_builder_capacity(
- *               vector_builder(sizeof(int)), 64),
- *           64));
- * @endcode
- */
-Vector *vector_builder_build(VectorBuilder b);
 
 /**
  * @brief Destroy a vector and free all resources
@@ -214,6 +211,84 @@ void vector_destroy(Vector *vec);
  * @note Only allowed on empty vectors.
  */
 int vector_set_comparator(Vector *vec, lc_Comparator cmp);
+
+/** @} */
+
+/**
+ * @defgroup vector_builder Builder API
+ * @brief Fluent configuration builder for vector creation
+ * @{
+ */
+
+/**
+ * @brief Create a new builder with default configuration
+ *
+ * @param item_size Size of each element in bytes (0 for string mode)
+ * @return Initialised VectorBuilder
+ */
+VectorBuilder vector_builder(size_t item_size);
+
+/**
+ * @brief Create a builder for string mode
+ *
+ * @return Initialised VectorBuilder with item_size=0
+ */
+VectorBuilder vector_builder_str(void);
+
+/**
+ * @brief Set initial capacity
+ *
+ * @param b    Builder
+ * @param cap  Initial capacity (rounded up to VECTOR_MIN_CAPACITY)
+ * @return Updated builder
+ */
+VectorBuilder vector_builder_capacity(VectorBuilder b, size_t cap);
+
+/**
+ * @brief Set custom comparator
+ *
+ * @param b   Builder
+ * @param cmp Element comparator (NULL = default)
+ * @return Updated builder
+ */
+VectorBuilder vector_builder_comparator(VectorBuilder b, lc_Comparator cmp);
+
+/**
+ * @brief Set alignment for first element
+ *
+ * @param b          Builder
+ * @param base_align Alignment for first element (must be power of two)
+ * @return Updated builder
+ */
+VectorBuilder vector_builder_alignment(VectorBuilder b, size_t base_align);
+
+/**
+ * @brief Set string ownership mode
+ *
+ * For string mode (item_size == 0), controls whether libcontain manages
+ * memory (strdup/free) or user manages (reference only).
+ *
+ * @param b      Builder
+ * @param owned  1 = libcontain owns strings, 0 = user owns strings
+ * @return Updated builder
+ *
+ * @par Example
+ * @code
+ *   // Reference strings - user manages memory
+ *   VectorBuilder b = vector_builder_str();
+ *   b = vector_builder_ref(b, 0);
+ *   Vector *vec = vector_builder_build(b);
+ * @endcode
+ */
+VectorBuilder vector_builder_ref(VectorBuilder b, uint8_t owned);
+
+/**
+ * @brief Build the vector
+ *
+ * @param b Initialised VectorBuilder
+ * @return Newly allocated vector, or NULL on failure
+ */
+Vector *vector_builder_build(VectorBuilder b);
 
 /** @} */
 
@@ -483,11 +558,8 @@ const void *vector_back(const Vector *vec);
  * @param vec Vector to query
  * @param pos Position to access
  * @return Mutable pointer to the element, or NULL if vec is NULL or pos out of bounds
- *
- * @warning Modifying the element via this pointer does not invalidate the
- *          cached hash. Call vector_hash() again if needed.
  */
-void *vector_at_mut(const Vector *vec, size_t pos);
+void *vector_at_mut(Vector *vec, size_t pos);
 
 /**
  * @brief Get a mutable pointer to the first element
@@ -495,7 +567,7 @@ void *vector_at_mut(const Vector *vec, size_t pos);
  * @param vec Vector to query
  * @return Mutable pointer to the first element, or NULL if vector is empty or NULL
  */
-void *vector_front_mut(const Vector *vec);
+void *vector_front_mut(Vector *vec);
 
 /**
  * @brief Get a mutable pointer to the last element
@@ -503,7 +575,18 @@ void *vector_front_mut(const Vector *vec);
  * @param vec Vector to query
  * @return Mutable pointer to the last element, or NULL if vector is empty or NULL
  */
-void *vector_back_mut(const Vector *vec);
+void *vector_back_mut(Vector *vec);
+
+/**
+ * @brief Get a mutable pointer to the underlying array (slice)
+ *
+ * @param vec Vector to query
+ * @return Mutable pointer to the first element, or NULL if vector is empty or NULL
+ *
+ * @note The returned pointer points directly into the vector's storage.
+ *       It may be invalidated by any operation that modifies the vector.
+ */
+void *vector_as_slice(Vector *vec);
 
 /**
  * @brief Find the first occurrence of an element
@@ -723,6 +806,7 @@ struct VectorImpl {
     uint16_t item_size;      /* 0 = string mode */
     uint16_t base_align;     /* alignment for first element */
     uint32_t stride;         /* = item_size (no padding) */
+    uint8_t  owned;          /* 1 = container owns/copies strings, 0 = user owns/references */
 };
 
 /* Layout calculation result */
@@ -812,7 +896,7 @@ static int vector_free_slot(Vector *vec, size_t from, size_t to) {
     size_t tail = vec->container.len - to;
 
     /* For strings, free each string before removal */
-    if (vec->impl->item_size == 0) {
+    if (vec->impl->owned && vec->impl->item_size == 0) {
         for (size_t i = from; i < to; i++) {
             free(*(char **)(base + (i * stride)));
         }
@@ -886,6 +970,7 @@ static Vector *vector_create_impl(VectorBuilder *cfg, VectorEntryLayout *layout)
     impl->item_size = (uint16_t)cfg->item_size;
     impl->base_align = (uint16_t)base_align;
     impl->stride = (uint32_t)stride;
+    impl->owned = cfg->owned;
 
     /* Initialize container header */
     vec->container.items = buffer;
@@ -905,6 +990,7 @@ static Vector *vector_create_from_impl(const Vector *src, size_t capacity) {
     const size_t stride = src->impl->stride;
     const uint16_t base_align = src->impl->base_align;
     const uint16_t item_size = src->impl->item_size;
+    const uint8_t owned = src->impl->owned;
     const size_t nat_align = lc_alloc_max_align();
 
     if (capacity > SIZE_MAX / stride) return NULL;
@@ -929,6 +1015,7 @@ static Vector *vector_create_from_impl(const Vector *src, size_t capacity) {
     impl->item_size = item_size;
     impl->base_align = base_align;
     impl->stride = (uint32_t)stride;
+    impl->owned = owned;
 
     vec->container.items = buffer;
     vec->container.len = 0;
@@ -948,7 +1035,8 @@ VectorBuilder vector_builder(size_t item_size) {
         .item_size = item_size,
         .base_align = 1,
         .capacity = VECTOR_MIN_CAPACITY,
-        .cmp = NULL
+        .cmp = NULL,
+        .owned = 1
     };
 }
 
@@ -957,7 +1045,8 @@ VectorBuilder vector_builder_str(void) {
         .item_size = 0,
         .base_align = 1,
         .capacity = VECTOR_MIN_CAPACITY,
-        .cmp = NULL
+        .cmp = NULL,
+        .owned = 1
     };
 }
 
@@ -973,6 +1062,11 @@ VectorBuilder vector_builder_comparator(VectorBuilder b, lc_Comparator cmp) {
 
 VectorBuilder vector_builder_alignment(VectorBuilder b, size_t base_align) {
     b.base_align = base_align;
+    return b;
+}
+
+VectorBuilder vector_builder_ref(VectorBuilder b, uint8_t owned) {
+    b.owned = owned;
     return b;
 }
 
@@ -1008,6 +1102,10 @@ Vector *vector_str(void) {
     return vector_builder_build(vector_builder_str());
 }
 
+Vector *vector_str_ref(void) {
+    return vector_builder_build(vector_builder_ref(vector_builder_str(), 0));
+}
+
 Vector *vector_str_with_capacity(size_t capacity) {
     return vector_builder_build(vector_builder_capacity(vector_builder_str(), capacity));
 }
@@ -1025,7 +1123,7 @@ void vector_destroy(Vector *vec) {
     if (!vec) return;
 
     /* In string mode, free each string */
-    if (vec->impl->item_size == 0 && vec->container.len > 0) {
+    if (vec->impl->owned && vec->impl->item_size == 0 && vec->container.len > 0) {
         size_t len = vec->container.len;
         size_t stride = vec->impl->stride;
         uint8_t *base = (uint8_t *)vec->container.items;
@@ -1062,21 +1160,29 @@ static int vector_append_strings(Vector *dst, size_t pos, const Vector *src, siz
     char **temp = (char **)malloc(count * sizeof(char *));
     if (!temp) return LC_ENOMEM;
 
-    /* Copy and strdup each string */
-    for (size_t i = 0; i < count; i++) {
-        char **src_slot = (char **)vector_slot_at((Vector *)src, from + i);
-        temp[i] = strdup(*src_slot);
-        if (!temp[i]) {
-            while (i--) free(temp[i]);
-            free(temp);
-            return LC_ENOMEM;
+    uint8_t owned = dst->impl->owned;
+
+    if (owned) {
+        for (size_t i = 0; i < count; i++) {
+            char **src_slot = (char **)vector_slot_at((Vector *)src, from + i);
+            temp[i] = strdup(*src_slot);
+            if (!temp[i]) {
+                while (i--) free(temp[i]);
+                free(temp);
+                return LC_ENOMEM;
+            }
+        }
+    } else {
+        for (size_t i = 0; i < count; i++) {
+            char **src_slot = (char **)vector_slot_at((Vector *)src, from + i);
+            temp[i] = *src_slot;
         }
     }
 
     /* Insert into destination */
     char **slots = (char **)vector_insert_slot(dst, pos, count);
     if (!slots) {
-        for (size_t i = 0; i < count; i++) free(temp[i]);
+        if (owned) for (size_t i = 0; i < count; i++) free(temp[i]);
         free(temp);
         return LC_ENOMEM;
     }
@@ -1132,12 +1238,12 @@ static int vector_insert_impl(Vector *vec, size_t pos, const void *item) {
 
     if (vec->impl->item_size == 0) {
         /* String mode: strdup the string */
-        char *str = strdup((const char *)item);
+        char *str = lc_str_dup((const char *)item, vec->impl->owned);
         if (!str) return LC_ENOMEM;
 
         void *slot = vector_insert_slot(vec, pos, 1);
         if (!slot) {
-            free(str);
+            lc_str_free(str, vec->impl->owned);
             return LC_ENOMEM;
         }
         *(char **)slot = str;
@@ -1169,7 +1275,7 @@ int vector_push(Vector *vec, const void *item) {
     void *slot = (uint8_t *)vec->container.items + (len * stride);
     
     if (isize == 0) {
-        char *str = strdup((const char *)item);
+        char *str = lc_str_dup((const char *)item, vec->impl->owned);
         if (!str) return LC_ENOMEM;
         *(char **)slot = str;
     } else {
@@ -1206,7 +1312,7 @@ int vector_set(Vector *vec, size_t pos, const void *item) {
     if (pos >= vec->container.len) return LC_EBOUNDS;
 
     void *slot = vector_slot_at(vec, pos);
-    int rc = lc_slot_set(slot, item, vec->impl->item_size);
+    int rc = lc_slot_set(slot, item, vec->impl->item_size, vec->impl->owned);
 
     return rc;
 }
@@ -1332,7 +1438,7 @@ int vector_clear(Vector *vec) {
     if (vec->container.len == 0) return LC_OK;
 
     /* Free all strings in string mode */
-    if (vec->impl->item_size == 0) {
+    if (vec->impl->item_size == 0 && vec->impl->owned) {
         size_t len = vec->container.len;
         size_t stride = vec->impl->stride;
         uint8_t *base = (uint8_t *)vec->container.items;
@@ -1405,22 +1511,29 @@ int vector_splice(Vector *dst, size_t pos, size_t remove_count, const Vector *sr
 
     if (insert_count > 0) {
         const uint8_t *src_base = (const uint8_t *)src->container.items + (src_from * stride);
-
+        uint8_t owned = dst->impl->owned;
+        
         temp = (temp_len <= sizeof(stack_buf)) ? stack_buf : (uint8_t *)malloc(temp_len);
         if (!temp) return LC_ENOMEM;
 
         if (isize == 0) {
-            /* String mode: duplicate each string */
-            for (size_t i = 0; i < insert_count; i++) {
-                const char *s = *(const char **)(src_base + (i * stride));
-                char *dup = s ? strdup(s) : NULL;
-                if (s && !dup) {
-                    for (size_t j = 0; j < i; j++)
-                        free(*(char **)(temp + (j * stride)));
-                    if (temp != stack_buf) free(temp);
-                    return LC_ENOMEM;
+            if (owned) {
+                for (size_t i = 0; i < insert_count; i++) {
+                    const char *s = *(const char **)(src_base + (i * stride));
+                    char *dup = s ? strdup(s) : NULL;
+                    if (s && !dup) {
+                        for (size_t j = 0; j < i; j++)
+                            free(*(char **)(temp + (j * stride)));
+                        if (temp != stack_buf) free(temp);
+                        return LC_ENOMEM;
+                    }
+                    *(char **)(temp + (i * stride)) = dup;
                 }
-                *(char **)(temp + (i * stride)) = dup;
+            } else {
+                for (size_t i = 0; i < insert_count; i++) {
+                    const char *s = *(const char **)(src_base + (i * stride));
+                    *(const char **)(temp + (i * stride)) = s;
+                }
             }
         } else {
             memcpy(temp, src_base, temp_len);
@@ -1447,6 +1560,7 @@ int vector_unique(Vector *vec) {
     const size_t len = vec->container.len;
     const size_t stride = vec->impl->stride;
     const size_t isize = vec->impl->item_size;
+    const uint8_t owned = vec->impl->owned;
     uint8_t *base = (uint8_t *)vec->container.items;
     
     if (vec->cmp) {
@@ -1469,7 +1583,7 @@ int vector_unique(Vector *vec) {
                     }
                 }
             } else if (isize == 0) {
-                free(*(char **)curr);
+                lc_str_free(*(char **)curr, owned);
                 *(char **)curr = NULL;
             }
         }
@@ -1490,7 +1604,7 @@ int vector_unique(Vector *vec) {
                     *dst = *curr;
                 }
             } else {
-                free(*curr);
+                lc_str_free(*curr, owned);
                 *curr = NULL;
             }
         }
@@ -1552,19 +1666,24 @@ const void *vector_back(const Vector *vec) {
     return slot ? lc_slot_get(slot, vec->impl->item_size) : NULL;
 }
 
-void *vector_at_mut(const Vector *vec, size_t pos) {
+void *vector_at_mut(Vector *vec, size_t pos) {
     if (!vec) return NULL;
-    return vector_slot_at((Vector *)vec, pos);
+    return vector_slot_at(vec, pos);
 }
 
-void *vector_front_mut(const Vector *vec) {
+void *vector_front_mut(Vector *vec) {
     if (!vec) return NULL;
-    return vector_slot_at((Vector *)vec, 0);
+    return vector_slot_at(vec, 0);
 }
 
-void *vector_back_mut(const Vector *vec) {
+void *vector_back_mut(Vector *vec) {
     if (!vec || vec->container.len == 0) return NULL;
-    return vector_slot_at((Vector *)vec, vec->container.len - 1);
+    return vector_slot_at(vec, vec->container.len - 1);
+}
+
+void *vector_as_slice(Vector *vec) {
+    if (!vec || vec->container.len == 0) return NULL;
+    return (void *)vec->container.items;
 }
 
 size_t vector_find(const Vector *vec, const void *item) {
@@ -1732,6 +1851,7 @@ Vector *vector_reverse(const Vector *vec) {
     const size_t n = vec->container.len;
     const size_t stride = vec->impl->stride;
     const size_t isize = vec->impl->item_size;
+    const uint8_t owned = vec->impl->owned;
 
     uint8_t *dst_base = (uint8_t *)rev->container.items;
     const uint8_t *src_base = (const uint8_t *)vec->container.items;
@@ -1741,7 +1861,7 @@ Vector *vector_reverse(const Vector *vec) {
         const void *src_item = src_base + ((n - 1 - i) * stride);
         void *dst_slot = dst_base + (i * stride);
 
-        if (lc_slot_copy(dst_slot, src_item, isize) != LC_OK) {
+        if (lc_slot_copy(dst_slot, src_item, isize, owned) != LC_OK) {
             vector_destroy(rev);
             return NULL;
         }
@@ -1761,8 +1881,10 @@ Vector *vector_clone(const Vector *src) {
     const size_t len = src->container.len;
     const size_t stride = src->impl->stride;
     const size_t isize = src->impl->item_size;
+    const uint8_t owned = src->impl->owned;
     uint8_t *dst_base = (uint8_t *)clone->container.items;
     const uint8_t *src_base = (const uint8_t *)src->container.items;
+
 
     if (isize == 0) {
         /* String mode: deep copy each string */
@@ -1770,7 +1892,7 @@ Vector *vector_clone(const Vector *src) {
             void *src_slot = (uint8_t *)src_base + (i * stride);
             void *dst_slot = dst_base + (i * stride);
 
-            if (lc_slot_copy(dst_slot, src_slot, 0) != LC_OK) {
+            if (lc_slot_copy(dst_slot, src_slot, 0, owned) != LC_OK) {
                 vector_destroy(clone);
                 return NULL;
             }
@@ -1794,6 +1916,7 @@ Vector *vector_slice(const Vector *vec, size_t start, size_t end) {
 
     const size_t stride = vec->impl->stride;
     const size_t isize = vec->impl->item_size;
+    const uint8_t owned = vec->impl->owned;
     uint8_t *dst_base = (uint8_t *)slice->container.items;
     const uint8_t *src_base = (const uint8_t *)vec->container.items + (start * stride);
 
@@ -1803,7 +1926,7 @@ Vector *vector_slice(const Vector *vec, size_t start, size_t end) {
             void *src_slot = (uint8_t *)src_base + (i * stride);
             void *dst_slot = dst_base + (i * stride);
 
-            if (lc_slot_copy(dst_slot, src_slot, 0) != LC_OK) {
+            if (lc_slot_copy(dst_slot, src_slot, 0, owned) != LC_OK) {
                 vector_destroy(slice);
                 return NULL;
             }

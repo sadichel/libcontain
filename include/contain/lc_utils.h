@@ -417,18 +417,37 @@ static inline void *lc_slot_get(void *slot, size_t size) {
 }
 
 /**
+ * @brief Duplicate a string based on ownership
+ * @param str   Input string
+ * @param owned 1 = strdup, 0 = return pointer
+ * @return Copy or original pointer
+ */
+static inline char* lc_str_dup(const char *str, uint8_t owned) {
+    return owned ? strdup(str) : (char *)str;
+}
+
+/**
+ * @brief Free a string based on ownership
+ * @param str   String to free
+ * @param owned 1 = free, 0 = do nothing
+ */
+static inline void lc_str_free(const char *str, uint8_t owned) {
+    if (owned) free((void*)str);
+}
+
+/**
  * @brief Set slot data (val is raw input, not dereferenced)
  * @param slot Destination slot
  * @param val  Source value
  * @param size Item size (0 = string mode)
  * @return LC_OK on success, error code on failure
  */
-static inline lc_Error lc_slot_set(void *slot, const void *val, size_t size) {
+static inline lc_Error lc_slot_set(void *slot, const void *val, size_t size, uint8_t owned) {
     if (size == 0) {
-        char *dup = strdup((const char *)val);
+        char *dup = lc_str_dup((const char *)val, owned);
         if (!dup) return LC_ENOMEM;
-        free(*(void **)slot);
-        *(void **)slot = dup;
+        lc_str_free(*(char **)slot, owned);
+        *(char **)slot = dup;
     } else {
         memcpy(slot, val, size);
     }
@@ -442,11 +461,11 @@ static inline lc_Error lc_slot_set(void *slot, const void *val, size_t size) {
  * @param size Item size (0 = string mode)
  * @return LC_OK on success, error code on failure
  */
-static inline lc_Error lc_slot_init(void *slot, const void *val, size_t size) {
+static inline lc_Error lc_slot_init(void *slot, const void *val, size_t size, uint8_t owned) {
     if (size == 0) {
-        char *dup = strdup((const char *)val);
+        char *dup = lc_str_dup((const char *)val, owned);
         if (!dup) return LC_ENOMEM;
-        *(void **)slot = dup;
+        *(char **)slot = dup;
     } else {
         memcpy(slot, val, size);
     }
@@ -460,16 +479,16 @@ static inline lc_Error lc_slot_init(void *slot, const void *val, size_t size) {
  * @param size Item size (0 = string mode)
  * @return LC_OK on success, error code on failure
  */
-static inline lc_Error lc_slot_copy(void *dst, const void *src, size_t size) {
+static inline lc_Error lc_slot_copy(void *dst, const void *src, size_t size, uint8_t owned) {
     if (size == 0) {
         const char *src_str = *(const char **)src;
         if (!src_str) {
             *(char **)dst = NULL;
             return LC_OK;
         }
-        char *new_str = strdup(src_str);
-        if (!new_str) return LC_ENOMEM;
-        *(char **)dst = new_str;
+        char *dup = lc_str_dup(src_str, owned);
+        if (!dup) return LC_ENOMEM;
+        *(char **)dst = dup;
     } else {
         memcpy(dst, src, size);
     }
@@ -481,10 +500,9 @@ static inline lc_Error lc_slot_copy(void *dst, const void *src, size_t size) {
  * @param slot Slot to free
  * @param size Item size (0 = string mode)
  */
-static inline void lc_slot_free(void *slot, size_t size) {
+static inline void lc_slot_free(void *slot, size_t size, uint8_t owned) {
     if (size == 0) {
-        void *ptr = *(void **)slot;
-        if (ptr) free(ptr);
+        lc_str_free(*(const char **)slot, owned);
     }
 }
 

@@ -9,30 +9,40 @@
  * @section example Usage Example
  * @code
  *   // Declare types at global scope
- *   DECL_VECTOR_TYPE(int, sizeof(int), IntVector)
- *   DECL_VECTOR_TYPE(const char*, 0, StringVector)
+ *   DECL_VECTOR_TYPE(int, sizeof(int), IntVector)              // Fixed-size
+ *   DECL_VECTOR_TYPE(const char*, 0, StringVector)             // Owned strings
+ *   DECL_VECTOR_REF_TYPE(const char*, 0, StringRefVector, 0)   // Reference strings
  *
  *   int main() {
- *       // Create typed vector directly (cast from generic)
- *       IntVector *vec1 = (IntVector*)vector_create(sizeof(int));
+ *       // Fixed-size
+ *       IntVector *vec1 = IntVector_create();
  *       IntVector_push(vec1, 42);
  *       IntVector_set(vec1, 0, 100);
  *       int val = IntVector_at(vec1, 0);  // 100, no cast!
  *
- *       // Or use convenience wrappers
- *       StringVector *vec2 = StringVector_create();
- *       StringVector_push(vec2, "hello");
- *       const char *s = StringVector_at(vec2, 0);  // "hello"
+ *       // Cast generic to typed (zero-cost)
+ *       IntVector *vec2 = (IntVector*)vector_create(sizeof(int));
+ *       IntVector_push(vec2, 42);
  *
- *       IntVector_reverse_inplace(vec1);
- *       IntVector_reserve(vec1, 1000);
+ *       // Owned strings - libcontain manages string memory
+ *       StringVector *vec3 = StringVector_create();
+ *       StringVector_push(vec3, "hello");
+ *       const char *s1 = StringVector_at(vec3, 0);  // "hello"
+ *
+ *       // Reference strings - user manages string memory
+ *       StringRefVector *vec4 = StringRefVector_create();
+ *       StringRefVector_push(vec4, "hello");
+ *       const char *s2 = StringRefVector_at(vec4, 0);  // "hello"
  *
  *       // Cast to generic when needed (zero-cost)
  *       Vector *raw = (Vector*)vec1;
  *       size_t len = vector_len(raw);
  *
  *       IntVector_destroy(vec1);
- *       StringVector_destroy(vec2);
+ *       IntVector_destroy(vec2);
+ *       StringVector_destroy(vec3);
+ *       StringRefVector_destroy(vec4);
+ *
  *       return 0;
  *   }
  * @endcode
@@ -74,15 +84,21 @@
 #endif
 
 /**
- * @def DECL_VECTOR_TYPE
+ * @cond INTERNAL
+ * @def VECTOR_TYPE_IMPL
  * @brief Generate a type-safe vector wrapper for type T
  *
  * Creates a new type `name` that shares memory layout with Vector,
  * enabling zero-cost casting between typed and generic pointers.
  *
- * @param T    Element type (e.g., int, const char*, MyStruct)
- * @param size Size of T in bytes (0 for string mode)
- * @param name Name for the generated type (e.g., IntVector)
+ * For string mode (size == 0), the `owned` parameter controls memory management:
+ * - owned = 1: strdup on insert, free on destroy
+ * - owned = 0: pointer only, no copy/free
+ *
+ * @param T     Element type (e.g., int, const char*, MyStruct)
+ * @param size  Size of T in bytes (0 for string mode)
+ * @param name  Name for the generated type (e.g., IntVector)
+ * @param owned 1 = container owns/copies strings, 0 = user owns/references
  *
  * @par Design Note
  * The typed struct contains a single Vector pointer as its first member,
@@ -110,7 +126,9 @@
  *   - `T name##_at_or_default(const name *n, size_t idx, T default_val)`
  *   - `T name##_front(const name *n)`
  *   - `T name##_back(const name *n)`
- *   - `T* name##_get_ptr(name *n, size_t idx)`
+ *   - `T const *name##_get_ptr(const name *n, size_t idx)`
+ *   - `T *name##_get_mut(name *n, size_t idx)`
+ *   - `int name##_resize(name *n, size_t new_len)`
  *
  * **Removal**
  *   - `int name##_pop(name *n)`
@@ -138,7 +156,7 @@
  *   - `name *name##_clone(const name *n)`
  *   - `name *name##_slice(const name *n, size_t from, size_t to)`
  *   - `name *name##_instance(const name *n)`
- *   - `T* name##_as_slice(const name *n)`
+ *   - `T* name##_as_slice(name *n)`
  *
  * **Configuration**
  *   - `int name##_set_comparator(name *n, lc_Comparator cmp)`
@@ -149,8 +167,10 @@
  *   - `name *name##_wrap(Container *c)` — Cast from generic (zero-cost)
  *
  * **Iteration**
- *   - `Iterator name##_iter(const name *n)`
- *   - `Iterator name##_iter_reversed(const name *n)`
+ *   - `name##Iterator name##_iter(const name *n)`
+ *   - `name##Iterator name##_iter_reversed(const name *n)`
+ *   - `bool name##_next(name##Iterator *it, T *out)`
+ *   - `Iterator name##_as_iterator(name##Iterator it)`
  *
  * @warning T must be copyable by memcpy. For structs with pointers,
  *          use string mode (size=0) or implement manual deep copy.
@@ -160,8 +180,10 @@
  *
  * @note Panics (abort) in debug mode when preconditions are violated.
  *       Define CONTAINER_DEBUG to enable runtime checks.
+ *
+ * @endcond
  */
-#define DECL_VECTOR_TYPE(T, size, name)                                                                                \
+#define VECTOR_TYPE_IMPL(T, size, name, owned)                                                                         \
     /* Compile-time size validation */                                                                                 \
     LC_STATIC_ASSERT((size) == 0 || (size) == sizeof(T),                                                               \
                      "libcontain: size must be 0 (string mode with T=const const char*) or sizeof(T) for fixed-size"); \
@@ -171,26 +193,39 @@
         Container base;                                                                                                \
     } name;                                                                                                            \
                                                                                                                        \
+    /* Iterator type */                                                                                                \
+    typedef struct name##Iterator {                                                                                    \
+        Iterator base;                                                                                                 \
+    } name##Iterator;                                                                                                  \
+                                                                                                                       \
     /* ===== Creation & Destruction ===== */                                                                           \
                                                                                                                        \
     /** @brief Create a new empty typed vector */                                                                      \
     static inline LC_UNUSED name *name##_create(void) {                                                                \
-        return (name *)vector_create(size);                                                                            \
+        VectorBuilder b = vector_builder(size);                                                                        \
+        if (size == 0) b = vector_builder_ref(b, owned);                                                               \
+        return (name *)vector_builder_build(b);                                                                        \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Create a new typed vector with specified initial capacity */                                            \
     static inline LC_UNUSED name *name##_create_with_capacity(size_t cap) {                                            \
-        return (name *)vector_create_with_capacity(size, cap);                                                         \
+        VectorBuilder b = vector_builder_capacity(vector_builder(size), cap);                                          \
+        if (size == 0) b = vector_builder_ref(b, owned);                                                               \
+        return (name *)vector_builder_build(b);                                                                        \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Create a new typed vector with a custom comparator */                                                   \
     static inline LC_UNUSED name *name##_create_with_comparator(lc_Comparator cmp) {                                   \
-        return (name *)vector_create_with_comparator(size, cmp);                                                       \
+        VectorBuilder b = vector_builder_comparator(vector_builder(size), cmp);                                        \
+        if (size == 0) b = vector_builder_ref(b, owned);                                                               \
+        return (name *)vector_builder_build(b);                                                                        \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Create a new typed vector with aligned elements */                                                      \
     static inline LC_UNUSED name *name##_create_aligned(size_t align) {                                                \
-        return (name *)vector_create_aligned(size, align);                                                             \
+        VectorBuilder b = vector_builder_alignment(vector_builder(size), align);                                       \
+        if (size == 0) b = vector_builder_ref(b, owned);                                                               \
+        return (name *)vector_builder_build(b);                                                                        \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Destroy a typed vector and free all resources */                                                        \
@@ -360,17 +395,24 @@
         return ((T *)((Vector *)n)->container.items)[((Vector *)n)->container.len - 1];                                \
     }                                                                                                                  \
                                                                                                                        \
-    /** @brief Get pointer to element (NULL if out of bounds) */                                                       \
-    static inline LC_UNUSED T *name##_get_ptr(name *n, size_t idx) {                                                   \
+    /** @brief Get read-only pointer to element (NULL if out of bounds) */                                             \
+    static inline LC_UNUSED T const *name##_get_ptr(const name *n, size_t idx) {                                       \
         LC_VEC_DEBUG_NULL(n, #name "_get_ptr");                                                                        \
+        if (idx >= vector_len((Vector *)n)) return NULL;                                                               \
+        return (T const *)vector_at((Vector *)n, idx);                                                                 \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get a mutable pointer to element (NULL if out of bounds) */                                             \
+    static inline LC_UNUSED T *name##_get_mut(name *n, size_t idx) {                                                   \
+        LC_VEC_DEBUG_NULL(n, #name "_get_mut");                                                                        \
         if (idx >= vector_len((Vector *)n)) return NULL;                                                               \
         return (T *)vector_at_mut((Vector *)n, idx);                                                                   \
     }                                                                                                                  \
                                                                                                                        \
-    /** @brief Get pointer to underlying array (read-only) */                                                          \
-    static inline LC_UNUSED T *name##_as_slice(const name *n) {                                                        \
+    /** @brief Get a pointer to underlying array */                                                                    \
+    static inline LC_UNUSED T *name##_as_slice(name *n) {                                                              \
         LC_VEC_DEBUG_NULL(n, #name "_as_slice");                                                                       \
-        return (T *)vector_front_mut((Vector *)n);                                                                     \
+        return (T *)vector_as_slice((Vector *)n);                                                                      \
     }                                                                                                                  \
                                                                                                                        \
     /* ===== Removal ===== */                                                                                          \
@@ -413,6 +455,11 @@
         return vector_shrink_to_fit((Vector *)n);                                                                      \
     }                                                                                                                  \
                                                                                                                        \
+    /** @brief Resize the vector to the given length */                                                                \
+    static inline LC_UNUSED int name##_resize(name *n, size_t new_len) {                                               \
+        LC_VEC_DEBUG_NULL(n, #name "_resize");                                                                         \
+        return vector_resize((Vector *)n, new_len);                                                                    \
+    }                                                                                                                  \
     /* ===== In-place Operations ===== */                                                                              \
                                                                                                                        \
     /** @brief Reverse the vector in place */                                                                          \
@@ -465,15 +512,62 @@
     /* ===== Iteration ===== */                                                                                        \
                                                                                                                        \
     /** @brief Create a forward iterator over the vector */                                                            \
-    static inline LC_UNUSED Iterator name##_iter(const name *n) {                                                      \
+    static inline LC_UNUSED name##Iterator name##_iter(const name *n) {                                                \
         LC_VEC_DEBUG_NULL(n, #name "_iter");                                                                           \
-        return vector_iter((Vector *)n);                                                                               \
+        return (name##Iterator){ .base = vector_iter((Vector *)n) };                                                   \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Create a reverse iterator over the vector */                                                            \
-    static inline LC_UNUSED Iterator name##_iter_reversed(const name *n) {                                             \
+    static inline LC_UNUSED name##Iterator name##_iter_reversed(const name *n) {                                       \
         LC_VEC_DEBUG_NULL(n, #name "_iter_reversed");                                                                  \
-        return vector_iter_reversed((Vector *)n);                                                                      \
+        return (name##Iterator){ .base = vector_iter_reversed((Vector *)n) };                                          \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get the underlying iterator */                                                                          \
+    static inline LC_UNUSED Iterator name##_as_iterator(name##Iterator it) {                                           \
+        return it.base;                                                                                                \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get the next element */                                                                                 \
+    static inline LC_UNUSED bool name##_next(name##Iterator *it, T *out) {                                             \
+        LC_VEC_DEBUG_NULL(it, #name "_next");                                                                          \
+        LC_VEC_DEBUG_NULL(out, #name "_next");                                                                         \
+        const void *ptr = iter_next(&it->base);                                                                        \
+        if (!ptr) return false;                                                                                        \
+        if (size == 0) {                                                                                               \
+            *(const void **)out = ptr;                                                                                 \
+        } else {                                                                                                       \
+            memcpy(out, ptr, sizeof(T));                                                                               \
+        }                                                                                                              \
+        return true;                                                                                                   \
     }
+
+/**
+ * @brief Declare a type-safe vector
+ *
+ * For string mode (size == 0), libcontain manages memory:
+ * - strdup on insert
+ * - free on destroy
+ *
+ * For fixed-size types (size > 0), ownership is ignored.
+ *
+ * @param T    Element type
+ * @param size Size of T in bytes (0 for string mode)
+ * @param name Name for the generated type
+ */
+#define DECL_VECTOR_TYPE(T, size, name) \
+    VECTOR_TYPE_IMPL(T, size, name, 1)
+
+/**
+ * @brief Declare a type-safe vector with explicit ownership control
+ *
+ * @param T      Element type
+ * @param size   Size of T in bytes (0 for string mode)
+ * @param name   Name for the generated type
+ * @param owned  1 = libcontain owns strings (strdup/free),
+ *               0 = user owns strings (reference only)
+ */
+#define DECL_VECTOR_REF_TYPE(T, size, name, owned) \
+    VECTOR_TYPE_IMPL(T, size, name, owned)
 
 #endif /* CONTAIN_TYPED_VECTOR_PDR_H */

@@ -31,6 +31,8 @@ Vector *vec = vector_create_with_capacity(sizeof(double), 1024);
 Vector *vec = vector_create_with_comparator(sizeof(MyStruct), my_compare);
 Vector *vec = vector_create_aligned(sizeof(float), 64);
 Vector *vec = vector_str();  /* automatic string handling mode */
+Vector *vec = vector_str_ref();  /* string reference */
+Vector *vec = vector_builder_build(builder);  /* build from builder */
 ```
 
 ### Operations
@@ -50,6 +52,7 @@ Vector *vec = vector_str();  /* automatic string handling mode */
 | Front | `vector_front(vec)` | O(1) |
 | Back | `vector_back(vec)` | O(1) |
 | Get mutable | `vector_at_mut(vec, idx)` | O(1) |
+| Get pointer to underlying array | `vector_as_slice(vec)` | O(1) |
 | Length | `vector_len(vec)` | O(1) |
 | Capacity | `vector_capacity(vec)` | O(1) |
 | Is empty | `vector_is_empty(vec)` | O(1) |
@@ -86,6 +89,8 @@ Deque *deq = deque_create_with_capacity(sizeof(double), 1024);
 Deque *deq = deque_create_with_comparator(sizeof(MyStruct), my_compare);
 Deque *deq = deque_create_aligned(sizeof(float), 64);
 Deque *deq = deque_str();  /* automatic string handling mode */
+Deque *deq = deque_str_ref(); /* string reference */
+Deque *deq = deque_builder_build(builder);  /* build from builder */
 ```
 
 ### Operations
@@ -107,6 +112,7 @@ Deque *deq = deque_str();  /* automatic string handling mode */
 | Front | `deque_front(deq)` | O(1) |
 | Back | `deque_back(deq)` | O(1) |
 | Get mutable | `deque_at_mut(deq, idx)` | O(1) |
+| Get pointer to underlying array | `deque_as_slice(deq)` | O(1) |
 | Length | `deque_len(deq)` | O(1) |
 | Capacity | `deque_capacity(deq)` | O(1) |
 | Is empty | `deque_is_empty(deq)` | O(1) |
@@ -141,8 +147,10 @@ Doubly-linked list with pool allocator. **O(1)** push/pop at both ends, **O(n)**
 LinkedList *list = linkedlist_create(sizeof(int));
 LinkedList *list = linkedlist_create_with_comparator(sizeof(MyStruct), my_compare);
 LinkedList *list = linkedlist_create_aligned(sizeof(float), 64);
-LinkedList *list = linkedlist_str();  /* automatic string handling mode */
 LinkedList *list = linkedlist_create_with_allocator(sizeof(int), alloc);
+LinkedList *list = linkedlist_str();  /* automatic string handling mode */
+LinkedList *list = linkedlist_str_ref(); /* string reference  */
+LinkedList *list = linkedlist_builder_build(builder);  /* build from builder */
 ```
 
 ### Operations
@@ -195,9 +203,11 @@ HashSet *set = hashset_create(sizeof(int));
 HashSet *set = hashset_create_with_capacity(sizeof(double), 1024);
 HashSet *set = hashset_create_with_hasher(sizeof(const char*), hash_fn);
 HashSet *set = hashset_create_with_comparator(sizeof(MyStruct), my_compare);
+HashSet *set = hashset_create_with_allocator(sizeof(int), alloc);
 HashSet *set = hashset_create_aligned(sizeof(float), 64);
 HashSet *set = hashset_str();  /* automatic string handling mode */
-HashSet *set = hashset_create_with_allocator(sizeof(int), alloc);
+HashSet *set = hashset_str_ref();  /* string reference */
+HashSet *set = hashset_builder_build(builder);  /* build from builder */
 ```
 
 ### Operations
@@ -240,11 +250,15 @@ HashMap *map = hashmap_create(sizeof(int), sizeof(double));
 HashMap *map = hashmap_create_with_capacity(sizeof(int), sizeof(double), 1024);
 HashMap *map = hashmap_create_with_hasher(sizeof(const char*), sizeof(int), hash_fn);
 HashMap *map = hashmap_create_with_comparator(sizeof(int), sizeof(double), kcmp, vcmp);
-HashMap *map = hashmap_create_aligned(sizeof(int), sizeof(double), 64, 64);
-HashMap *map = hashmap_str_any(sizeof(int));      /* string -> value */
-HashMap *map = hashmap_any_str(sizeof(double));   /* key -> string */
-HashMap *map = hashmap_str_str();                 /* string -> string */
 HashMap *map = hashmap_create_with_allocator(sizeof(int), sizeof(double), alloc);
+HashMap *map = hashmap_create_aligned(sizeof(int), sizeof(double), 64, 64);
+HashMap *map = hashmap_str_any(sizeof(int));         /* string -> value */
+HashMap *map = hashmap_any_str(sizeof(double));      /* key -> string */
+HashMap *map = hashmap_str_str();                    /* string -> string */
+HashMap *map = hashmap_str_ref_any(sizeof(int));     /* string ref -> value */
+HashMap *map = hashmap_any_str_ref(sizeof(double));  /* key -> string ref */
+HashMap *map = hashmap_str_ref_str_ref();            /* string ref -> string ref */
+HashMap *map = hashmap_builder_build(builder);       /* build from builder */
 ```
 
 ### Operations

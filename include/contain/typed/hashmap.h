@@ -12,32 +12,43 @@
  *   DECL_HASHMAP_TYPE(int, int, sizeof(int), sizeof(int), IntIntMap)
  *   DECL_HASHMAP_TYPE(const char*, int, 0, sizeof(int), StrIntMap)
  *   DECL_HASHMAP_TYPE(const char*, const char*, 0, 0, StrStrMap)
+ *   DECL_HASHMAP_REF_TYPE(const char*, const char*, 0, 0, StrStrMapRef, 0, 0)
  *
  *   int main() {
- *       // Create typed map directly (cast from generic)
- *       IntIntMap *map1 = (IntIntMap*)hashmap_create(sizeof(int), sizeof(int));
+ *       // Fixed-size - no ownership
+ *       IntIntMap *map1 = IntIntMap_create();
  *       IntIntMap_insert(map1, 1, 100);
  *       IntIntMap_insert(map1, 2, 200);
  *       int val = IntIntMap_get(map1, 1);  // 100, no cast!
  *
- *       // Or use convenience wrappers
- *       StrStrMap *map2 = StrStrMap_create();
- *       StrStrMap_insert(map2, "hello", "world");
- *       const char *s = StrStrMap_get(map2, "hello");  // "world"
+ *       // Cast generic to typed (zero-cost)
+ *       IntIntMap *map2 = (IntIntMap*)hashmap_create(sizeof(int), sizeof(int));
+ *       IntIntMap_insert(map2, 1, 100);
+ *       IntIntMap_insert(map2, 2, 200);
+ *
+ *       // Owned String Fixed
+ *       StrIntMap *map3 = StrIntMap_create();
+ *       StrIntMap_insert(map3, "hello", 100);
+ *       int val2 = StrIntMap_get(map3, "hello");  // 100, no cast!
+ *
+ *       // Owned strings - libcontain manages string memory
+ *       StrStrMap *map4 = StrStrMap_create();
+ *       StrStrMap_insert(map4, "hello", "world");
+ *       const char *s = StrStrMap_get(map4, "hello");  // "world"
+ *
+ *       // Reference strings - user manages string memory
+ *       StrStrMapRef *map5 = StrStrMapRef_create();
+ *       StrStrMapRef_insert(map5, "hello", "world");
+ *       const char *s2 = StrStrMapRef_get(map5, "hello");  // "world"
  *
  *       // Cast to generic when needed (zero-cost)
  *       HashMap *raw = (HashMap*)map1;
  *       size_t len = hashmap_len(raw);
  *
- *       // Create empty map of same type
- *       StrStrMap *empty = StrStrMap_instance(map2);
- *
- *       // In-place merge
- *       IntIntMap_merge(map1, map2);
- *
- *       IntIntMap_destroy(map1);
- *       StrStrMap_destroy(map2);
- *       StrStrMap_destroy(empty);
+ *       IntIntMap_destroy(map2);
+ *       StrStrMapRef_destroy(map4);
+ *       StrIntMap_destroy(map5);
+ *       StrStrMapRef_destroy(map3);
  *       return 0;
  *   }
  * @endcode
@@ -78,17 +89,24 @@
 #endif
 
 /**
- * @def DECL_HASHMAP_TYPE
+ * @cond INTERNAL
+ * @def HASHMAP_TYPE_IMPL
  * @brief Generate a type-safe hash map wrapper for key type K and value type V
  *
  * Creates a new type `name` that shares memory layout with HashMap,
  * enabling zero-cost casting between typed and generic pointers.
+ *
+ * For string mode (size == 0), the `owned` parameter controls memory management:
+ * - owned = 1: strdup on insert, free on destroy
+ * - owned = 0: pointer only, no copy/free
  *
  * @param K      Key type (e.g., int, const char*, MyStruct)
  * @param V      Value type (e.g., int, const char*, MyStruct)
  * @param ksize  Size of K in bytes (0 for string mode)
  * @param vsize  Size of V in bytes (0 for string mode)
  * @param name   Name for the generated type (e.g., IntIntMap, StrStrMap)
+ * @param kowned Whether the key is owned by the map (1 for owned, 0 for borrowed)
+ * @param vowned Whether the value is owned by the map (1 for owned, 0 for borrowed)
  *
  * @par Design Note
  * The typed struct contains a single HashMap pointer as its first member,
@@ -119,6 +137,7 @@
  *   - `int name##_remove_entry(name *n, K key, V val)`
  *   - `V name##_get(const name *n, K key)`
  *   - `V name##_get_or_default(const name *n, K key, V dval)`
+ *   - `V const *name##_get_ptr(const name *n, K key)`  
  *   - `V* name##_get_mut(name *n, K key)`
  *   - `bool name##_contains(const name *n, K key)`
  *   - `bool name##_contains_entry(const name *n, K key, V val)`
@@ -147,17 +166,19 @@
  * **Export & Iteration**
  *   - `Array *name##_keys(const name *n)`
  *   - `Array *name##_values(const name *n)`
- *   - `Iterator name##_iter(const name *n)`
- *   - `K name##_entry_key(const name *n, const void *entry_ptr)`
- *   - `V name##_entry_value(const name *n, const void *entry_ptr)`
+ *   - `name##Iterator name##_iter(const name *n)`
+ *   - `bool name##_next(name##Iterator *it, K *key_out, V *val_out)`
+ *   - `Iterator name##_as_iterator(name##Iterator it)`
  *
  * @warning T must be copyable by memcpy. For structs with pointers,
  *          use string mode (size=0) or implement manual deep copy.
  *
  * @note Panics (abort) in debug mode when preconditions are violated.
  *       Define CONTAINER_DEBUG to enable runtime checks.
+ *
+ * @endcond
  */
-#define DECL_HASHMAP_TYPE(K, V, ksize, vsize, name)                                                                     \
+#define HASHMAP_TYPE_IMPL(K, V, ksize, vsize, name, kowned, vowned)                                                     \
     /* Compile-time size validation */                                                                                  \
     LC_STATIC_ASSERT((ksize) == 0 || (ksize) == sizeof(K),                                                              \
                      "libcontain: ksize must be 0 (string mode with K=const const char*) or sizeof(K) for fixed-size"); \
@@ -169,31 +190,46 @@
         Container base;                                                                                                 \
     } name;                                                                                                             \
                                                                                                                         \
+    /* Iterator type */                                                                                                 \
+    typedef struct name##Iterator {                                                                                     \
+        Iterator base;                                                                                                  \
+    } name##Iterator;                                                                                                   \
+                                                                                                                        \
     /* ===== Creation & Destruction ===== */                                                                            \
                                                                                                                         \
     /** @brief Create a new empty typed hash map */                                                                     \
     static inline LC_UNUSED name *name##_create(void) {                                                                 \
-        return (name *)hashmap_create(ksize, vsize);                                                                    \
+        HashMapBuilder b = hashmap_builder(ksize, vsize);                                                               \
+        if (ksize == 0 || vsize == 0) b = hashmap_builder_ref(b, kowned, vowned);                                       \
+        return (name *)hashmap_builder_build(b);                                                                        \
     }                                                                                                                   \
                                                                                                                         \
     /** @brief Create a new typed hash map with specified initial bucket count */                                       \
     static inline LC_UNUSED name *name##_create_with_capacity(size_t cap) {                                             \
-        return (name *)hashmap_create_with_capacity(ksize, vsize, cap);                                                 \
+        HashMapBuilder b = hashmap_builder_capacity(hashmap_builder(ksize, vsize), cap);                                \
+        if (ksize == 0 || vsize == 0) b = hashmap_builder_ref(b, kowned, vowned);                                       \
+        return (name *)hashmap_builder_build(b);                                                                        \
     }                                                                                                                   \
                                                                                                                         \
     /** @brief Create a new typed hash map with a custom key hash function */                                           \
     static inline LC_UNUSED name *name##_create_with_hasher(lc_Hasher hasher) {                                         \
-        return (name *)hashmap_create_with_hasher(ksize, vsize, hasher);                                                \
+        HashMapBuilder b = hashmap_builder_hasher(hashmap_builder(ksize, vsize), hasher);                               \
+        if (ksize == 0 || vsize == 0) b = hashmap_builder_ref(b, kowned, vowned);                                       \
+        return (name *)hashmap_builder_build(b);                                                                        \
     }                                                                                                                   \
                                                                                                                         \
     /** @brief Create a new typed hash map with custom key and value comparators */                                     \
     static inline LC_UNUSED name *name##_create_with_comparator(lc_Comparator kcmp, lc_Comparator vcmp) {               \
-        return (name *)hashmap_create_with_comparator(ksize, vsize, kcmp, vcmp);                                        \
+        HashMapBuilder b = hashmap_builder_comparators(hashmap_builder(ksize, vsize), kcmp, vcmp);                      \
+        if (ksize == 0 || vsize == 0) b = hashmap_builder_ref(b, kowned, vowned);                                       \
+        return (name *)hashmap_builder_build(b);                                                                        \
     }                                                                                                                   \
                                                                                                                         \
     /** @brief Create a new typed hash map with aligned keys and values */                                              \
     static inline LC_UNUSED name *name##_create_aligned(size_t key_align, size_t val_align) {                           \
-        return (name *)hashmap_create_aligned(ksize, vsize, key_align, val_align);                                      \
+        HashMapBuilder b = hashmap_builder_alignment(hashmap_builder(ksize, vsize), key_align, val_align);              \
+        if (ksize == 0 || vsize == 0) b = hashmap_builder_ref(b, kowned, vowned);                                       \
+        return (name *)hashmap_builder_build(b);                                                                        \
     }                                                                                                                   \
                                                                                                                         \
     /** @brief Destroy a typed hash map and free all resources */                                                       \
@@ -304,6 +340,17 @@
         memcpy(&kptr, &key, sizeof(void *));                                                                            \
         const void *val = hashmap_get_mut_or_default((HashMap *)n, kptr, &default_val);                                 \
         return *(V *)val;                                                                                               \
+    }                                                                                                                   \
+                                                                                                                        \
+    /** @brief Get a read-only pointer to a value by key (returns NULL if not found) */                                 \
+    static inline LC_UNUSED V const *name##_get_ptr(const name *n, K key) {                                             \
+        LC_MAP_DEBUG_NULL(n, #name "_get_ptr");                                                                         \
+        if (ksize != 0) {                                                                                               \
+            return (V const *)hashmap_get((HashMap *)n, &key);                                                          \
+        }                                                                                                               \
+        void *kptr;                                                                                                     \
+        memcpy(&kptr, &key, sizeof(void *));                                                                            \
+        return (V const *)hashmap_get((HashMap *)n, kptr);                                                              \
     }                                                                                                                   \
                                                                                                                         \
     /** @brief Get a mutable pointer to a value by key (returns NULL if not found) */                                   \
@@ -446,22 +493,68 @@
         return hashmap_values((HashMap *)n);                                                                            \
     }                                                                                                                   \
                                                                                                                         \
-    /** @brief Get the key from a raw hash map entry pointer */                                                         \
-    static inline LC_UNUSED K name##_entry_key(const name *n, const void *entry_ptr) {                                  \
-        LC_MAP_DEBUG_NULL_ENTRY(n, entry_ptr, #name "_entry_key");                                                      \
-        return *(K *)hashmap_entry_key_mut((HashMap *)n, entry_ptr);                                                    \
-    }                                                                                                                   \
-                                                                                                                        \
-    /** @brief Get the value from a raw hash map entry pointer */                                                       \
-    static inline LC_UNUSED V name##_entry_value(const name *n, const void *entry_ptr) {                                \
-        LC_MAP_DEBUG_NULL_ENTRY(n, entry_ptr, #name "_entry_value");                                                    \
-        return *(V *)hashmap_entry_value_mut((HashMap *)n, entry_ptr);                                                  \
-    }                                                                                                                   \
-                                                                                                                        \
     /** @brief Create a forward iterator over the hash map */                                                           \
-    static inline LC_UNUSED Iterator name##_iter(const name *n) {                                                       \
+    static inline LC_UNUSED name##Iterator name##_iter(const name *n) {                                                 \
         LC_MAP_DEBUG_NULL(n, #name "_iter");                                                                            \
-        return hashmap_iter((HashMap *)n);                                                                              \
+        return (name##Iterator){ .base = hashmap_iter((HashMap *)n) };                                                  \
+    }                                                                                                                   \
+                                                                                                                        \
+    /** @brief Get the underlying iterator */                                                                           \
+    static inline LC_UNUSED Iterator name##_as_iterator(name##Iterator it) {                                            \
+        return it.base;                                                                                                 \
+    }                                                                                                                   \
+                                                                                                                        \
+    /** @brief Get the next key-value pair */                                                                           \
+    static inline LC_UNUSED bool name##_next(name##Iterator *it, K *key_out, V *val_out) {                              \
+        LC_MAP_DEBUG_NULL(it, #name "_next");                                                                           \
+        LC_MAP_DEBUG_NULL(key_out, #name "_next");                                                                      \
+        LC_MAP_DEBUG_NULL(val_out, #name "_next");                                                                      \
+        const void *entry = iter_next(&it->base);                                                                       \
+        if (!entry) return false;                                                                                       \
+        HashMap *map = (HashMap *)it->base.container;                                                                   \
+        const void *key_ptr = hashmap_entry_key(map, entry);                                                            \
+        const void *val_ptr = hashmap_entry_value(map, entry);                                                          \
+        if (ksize == 0) {                                                                                               \
+            *(const void **)key_out = key_ptr;                                                                          \
+        } else {                                                                                                        \
+            memcpy(key_out, key_ptr, sizeof(K));                                                                        \
+        }                                                                                                               \
+        if (vsize == 0) {                                                                                               \
+            *(const void **)val_out = val_ptr;                                                                          \
+        } else {                                                                                                        \
+            memcpy(val_out, val_ptr, sizeof(V));                                                                        \
+        }                                                                                                               \
+        return true;                                                                                                    \
     }
+
+/** @brief Declare a type-safe hashmap
+ *
+ * For string mode (size == 0), libcontain manages memory:
+ * - strdup on insert
+ * - free on destroy
+ *
+ * For fixed-size types (size > 0), ownership is ignored.
+ *
+ * @param K      Key type
+ * @param V      Value type
+ * @param ksize  Size of K in bytes (0 for string mode)
+ * @param vsize  Size of V in bytes (0 for string mode)
+ * @param name   Name for the generated type
+ */
+#define DECL_HASHMAP_TYPE(K, V, ksize, vsize, name) \
+    HASHMAP_TYPE_IMPL(K, V, ksize, vsize, name, 1, 1)
+
+/** @brief Declare a type-safe hashmap with explicit ownership control
+ *
+ * @param K      Key type
+ * @param V      Value type
+ * @param ksize  Size of K in bytes (0 for string mode)
+ * @param vsize  Size of V in bytes (0 for string mode)
+ * @param name   Name for the generated type
+ * @param kowned Whether the key is owned by the map (1 for owned, 0 for borrowed)
+ * @param vowned Whether the value is owned by the map (1 for owned, 0 for borrowed)
+ */
+#define DECL_HASHMAP_REF_TYPE(K, V, ksize, vsize, name, kowned, vowned) \
+    HASHMAP_TYPE_IMPL(K, V, ksize, vsize, name, kowned, vowned)
 
 #endif /* CONTAIN_TYPED_HASHMAP_PDR_H */

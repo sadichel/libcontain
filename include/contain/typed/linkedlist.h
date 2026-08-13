@@ -11,25 +11,37 @@
  *   // Declare types at global scope
  *   DECL_LINKEDLIST_TYPE(int, sizeof(int), IntList)
  *   DECL_LINKEDLIST_TYPE(const char*, 0, StringList)
+ *   DECL_LINKEDLIST_REF_TYPE(const char*, 0, StringRefList, 0)
  *
  *   int main() {
- *       // Create typed list directly (cast from generic)
- *       IntList *list1 = (IntList*)linkedlist_create(sizeof(int));
+ *       // Fixed-size
+ *       IntList *list1 = IntList_create();
  *       IntList_push_back(list1, 42);
  *       IntList_push_front(list1, 10);
- *       int val = IntList_at(list1, 0);  // 10
+ *       int val = IntList_at(list1, 0);  // 10, no cast!
  *
- *       // Or use convenience wrappers
- *       StringList *list2 = StringList_create();
- *       StringList_push_back(list2, "hello");
- *       const char *s = StringList_at(list2, 0);  // "hello"
+ *       // Cast generic to typed (zero-cost)
+ *       IntList *list2 = (IntList*)linkedlist_create(sizeof(int));
+ *       IntList_push(list2, &val);
+ *
+ *       // Owned strings - libcontain manages string memory
+ *       StringList *list3 = StringList_create();
+ *       StringList_push_back(list3, "hello");
+ *       const char *s1 = StringList_at(list3, 0);  // "hello"
+ *
+ *       // Reference strings - user manages string memory
+ *       StringRefList *list4 = StringRefList_create();
+ *       StringRefList_push_back(list4, "hello");
+ *       const char *s2 = StringRefList_at(list4, 0);  // "hello"
  *
  *       // Cast to generic when needed (zero-cost)
  *       LinkedList *raw = (LinkedList*)list1;
  *       size_t len = linkedlist_len(raw);
  *
  *       IntList_destroy(list1);
- *       StringList_destroy(list2);
+ *       IntList_destroy(list2);
+ *       StringList_destroy(list3);
+ *       StringRefList_destroy(list4);
  *       return 0;
  *   }
  * @endcode
@@ -71,15 +83,21 @@
 #endif
 
 /**
- * @def DECL_LINKEDLIST_TYPE
+ * @cond INTERNAL
+ * @def LINKEDLIST_TYPE_IMPL
  * @brief Generate a type-safe linked list wrapper for type T
  *
  * Creates a new type `name` that shares memory layout with LinkedList,
  * enabling zero-cost casting between typed and generic pointers.
  *
- * @param T    Element type (e.g., int, const char*, MyStruct)
- * @param size Size of T in bytes (0 for string mode)
- * @param name Name for the generated type (e.g., IntList, StringList)
+ * For string mode (size == 0), the `owned` parameter controls memory management:
+ * - owned = 1: strdup on insert, free on destroy
+ * - owned = 0: pointer only, no copy/free
+ *
+ * @param T     Element type (e.g., int, const char*, MyStruct)
+ * @param size  Size of T in bytes (0 for string mode)
+ * @param name  Name for the generated type (e.g., IntList, StringList)
+ * @param owned 1 = container owns/copies strings, 0 = user owns/references
  *
  * @par Design Note
  * The typed struct contains a single LinkedList pointer as its first member,
@@ -115,7 +133,8 @@
  *   - `T name##_at_or_default(const name *n, size_t pos, T default_val)`
  *   - `T name##_front(const name *n)`
  *   - `T name##_back(const name *n)`
- *   - `T* name##_get_ptr(name *n, size_t pos)`
+ *   - `T const *name##_get_ptr(const name *n, size_t pos)`
+ *   - `T *name##_get_mut(name *n, size_t pos)`
  *
  * **Removal**
  *   - `int name##_pop_front(name *n)`
@@ -143,8 +162,10 @@
  *   - `name *name##_sublist(const name *n, size_t from, size_t to)`
  *
  * **Iteration**
- *   - `Iterator name##_iter(const name *n)`
- *   - `Iterator name##_iter_reversed(const name *n)`
+ *   - `name##Iterator name##_iter(const name *n)`
+ *   - `name##Iterator name##_iter_reversed(const name *n)`
+ *   - `bool name##_next(name##Iterator *it, T *out)`
+ *   - `Iterator name##_as_iterator(name##Iterator it)`
  *
  * @warning T must be copyable by memcpy. For structs with pointers,
  *          use string mode (size=0) or implement manual deep copy.
@@ -154,8 +175,10 @@
  *
  * @note Panics (abort) in debug mode when preconditions are violated.
  *       Define CONTAINER_DEBUG to enable runtime checks.
+ *
+ * @endcond
  */
-#define DECL_LINKEDLIST_TYPE(T, size, name)                                                                            \
+#define LINKEDLIST_TYPE_IMPL(T, size, name, owned)                                                                     \
     /* Compile-time size validation */                                                                                 \
     LC_STATIC_ASSERT((size) == 0 || (size) == sizeof(T),                                                               \
                      "libcontain: size must be 0 (string mode with T=const const char*) or sizeof(T) for fixed-size"); \
@@ -165,21 +188,32 @@
         Container base;                                                                                                \
     } name;                                                                                                            \
                                                                                                                        \
+    /* Iterator type */                                                                                                \
+    typedef struct name##Iterator {                                                                                    \
+        Iterator base;                                                                                                 \
+    } name##Iterator;                                                                                                  \
+                                                                                                                       \
     /* ===== Creation & Destruction ===== */                                                                           \
                                                                                                                        \
     /** @brief Create a new empty typed linked list */                                                                 \
     static inline LC_UNUSED name *name##_create(void) {                                                                \
-        return (name *)linkedlist_create(size);                                                                        \
+        LinkedListBuilder b = linkedlist_builder(size);                                                                \
+        if (size == 0) b = linkedlist_builder_ref(b, owned);                                                           \
+        return (name *)linkedlist_builder_build(b);                                                                    \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Create a new typed linked list with a custom comparator */                                              \
     static inline LC_UNUSED name *name##_create_with_comparator(lc_Comparator cmp) {                                   \
-        return (name *)linkedlist_create_with_comparator(size, cmp);                                                   \
+        LinkedListBuilder b = linkedlist_builder_comparator(linkedlist_builder(size), cmp);                            \
+        if (size == 0) b = linkedlist_builder_ref(b, owned);                                                           \
+        return (name *)linkedlist_builder_build(b);                                                                    \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Create a new typed linked list with aligned elements */                                                 \
     static inline LC_UNUSED name *name##_create_aligned(size_t align) {                                                \
-        return (name *)linkedlist_create_aligned(size, align);                                                         \
+        LinkedListBuilder b = linkedlist_builder_alignment(linkedlist_builder(size), align);                           \
+        if (size == 0) b = linkedlist_builder_ref(b, owned);                                                           \
+        return (name *)linkedlist_builder_build(b);                                                                    \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Destroy a typed linked list and free all resources */                                                   \
@@ -350,9 +384,16 @@
         return *(T *)slot;                                                                                             \
     }                                                                                                                  \
                                                                                                                        \
-    /** @brief Get pointer to element (NULL if out of bounds) */                                                       \
-    static inline LC_UNUSED T *name##_get_ptr(name *n, size_t pos) {                                                   \
+    /** @brief Get a read-only pointer to element (NULL if out of bounds) */                                           \
+    static inline LC_UNUSED T const *name##_get_ptr(const name *n, size_t pos) {                                       \
         LC_LIST_DEBUG_NULL(n, #name "_get_ptr");                                                                       \
+        if (pos >= linkedlist_len((LinkedList *)n)) return NULL;                                                       \
+        return (T const *)linkedlist_at((LinkedList *)n, pos);                                                         \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get a mutable pointer to element (NULL if out of bounds) */                                             \
+    static inline LC_UNUSED T *name##_get_mut(name *n, size_t pos) {                                                   \
+        LC_LIST_DEBUG_NULL(n, #name "_get_mut");                                                                       \
         if (pos >= linkedlist_len((LinkedList *)n)) return NULL;                                                       \
         return (T *)linkedlist_at_mut((LinkedList *)n, pos);                                                           \
     }                                                                                                                  \
@@ -437,15 +478,62 @@
     /* ===== Iteration ===== */                                                                                        \
                                                                                                                        \
     /** @brief Create a forward iterator over the list */                                                              \
-    static inline LC_UNUSED Iterator name##_iter(const name *n) {                                                      \
+    static inline LC_UNUSED name##Iterator name##_iter(const name *n) {                                                \
         LC_LIST_DEBUG_NULL(n, #name "_iter");                                                                          \
-        return linkedlist_iter((LinkedList *)n);                                                                       \
+        return (name##Iterator){ .base = linkedlist_iter((LinkedList *)n) };                                           \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Create a reverse iterator over the list */                                                              \
-    static inline LC_UNUSED Iterator name##_iter_reversed(const name *n) {                                             \
+    static inline LC_UNUSED name##Iterator name##_iter_reversed(const name *n) {                                       \
         LC_LIST_DEBUG_NULL(n, #name "_iter_reversed");                                                                 \
-        return linkedlist_iter_reversed((LinkedList *)n);                                                              \
+        return (name##Iterator){ .base = linkedlist_iter_reversed((LinkedList *)n) };                                  \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get the underlying iterator */                                                                          \
+    static inline LC_UNUSED Iterator name##_as_iterator(name##Iterator it) {                                           \
+        return it.base;                                                                                                \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Get the next element */                                                                                 \
+    static inline LC_UNUSED bool name##_next(name##Iterator *it, T *out) {                                             \
+        LC_LIST_DEBUG_NULL(it, #name "_next");                                                                         \
+        LC_LIST_DEBUG_NULL(out, #name "_next");                                                                        \
+        const void *ptr = iter_next(&it->base);                                                                        \
+        if (!ptr) return false;                                                                                        \
+        if (size == 0) {                                                                                               \
+            *(const void **)out = ptr;                                                                                 \
+        } else {                                                                                                       \
+            memcpy(out, ptr, sizeof(T));                                                                               \
+        }                                                                                                              \
+        return true;                                                                                                   \
     }
+
+/**
+ * @brief Declare a type-safe linkedlist
+ *
+ * For string mode (size == 0), libcontain manages memory:
+ * - strdup on insert
+ * - free on destroy
+ *
+ * For fixed-size types (size > 0), ownership is ignored.
+ *
+ * @param T    Element type
+ * @param size Size of T in bytes (0 for string mode)
+ * @param name Name for the generated type
+ */
+#define DECL_LINKEDLIST_TYPE(T, size, name) \
+    LINKEDLIST_TYPE_IMPL(T, size, name, 1)
+
+/**
+ * @brief Declare a type-safe linkedlist with explicit ownership control
+ *
+ * @param T      Element type
+ * @param size   Size of T in bytes (0 for string mode)
+ * @param name   Name for the generated type
+ * @param owned  1 = libcontain owns strings (strdup/free),
+ *               0 = user owns strings (reference only)
+ */
+#define DECL_LINKEDLIST_REF_TYPE(T, size, name, owned) \
+    LINKEDLIST_TYPE_IMPL(T, size, name, owned)
 
 #endif /* CONTAIN_TYPED_LINKEDLIST_PDR_H */
