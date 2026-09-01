@@ -18,7 +18,7 @@ add_compile_definitions(_POSIX_C_SOURCE=200809L)
 # ============================================================================
 
 option(BUILD_SHARED_LIBS "Build shared library" OFF)
-option(CONTAINER_DEBUG "Enable debug mode" OFF)
+option(LC_DEBUG "Enable debug mode" OFF)
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_BENCHMARKS "Build benchmarks" ON)
 
@@ -39,10 +39,10 @@ set(BASE_C_FLAGS "-Wall -Wextra -Wpedantic -fPIC")
 
 # Build type flags
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_definitions(CONTAINER_DEBUG)
+    add_compile_definitions(LC_DEBUG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Sanitize")
-    add_compile_definitions(CONTAINER_DEBUG)
+    add_compile_definitions(LC_DEBUG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g -fsanitize=address,undefined")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address,undefined")
 else()

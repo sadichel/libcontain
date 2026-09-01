@@ -59,7 +59,7 @@
 #include <stdlib.h>
 
 /* Internal debug macros */
-#ifdef CONTAINER_DEBUG
+#ifdef LC_DEBUG
 #include <stdio.h>
 #define LC_VEC_DEBUG_NULL(n, func)                                        \
     if (!(n)) {                                                           \
@@ -133,6 +133,7 @@
  * **Removal**
  *   - `int name##_pop(name *n)`
  *   - `int name##_remove(name *n, size_t idx)`
+ *   - `int name##_remove_range(name *n, size_t from, size_t to)`
  *   - `void name##_clear(name *n)`
  *
  * **Queries**
@@ -427,6 +428,12 @@
     static inline LC_UNUSED int name##_remove(name *n, size_t idx) {                                                   \
         LC_VEC_DEBUG_NULL(n, #name "_remove");                                                                         \
         return vector_remove((Vector *)n, idx);                                                                        \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Remove range of elements from the vector */                                                             \
+    static inline LC_UNUSED int name##_remove_range(name *n, size_t start, size_t end) {                               \
+        LC_VEC_DEBUG_NULL(n, #name "_remove_range");                                                                   \
+        return vector_remove_range((Vector *)n, start, end);                                                           \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Remove all elements from the vector */                                                                  \

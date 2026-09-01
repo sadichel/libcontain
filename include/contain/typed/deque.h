@@ -58,7 +58,7 @@
 #include <stdlib.h>
 
 /* Internal debug macros */
-#ifdef CONTAINER_DEBUG
+#ifdef LC_DEBUG
 #include <stdio.h>
 #define LC_DEQ_DEBUG_NULL(n, func)                                        \
     if (!(n)) {                                                           \
@@ -134,6 +134,7 @@
  *   - `int name##_pop_back(name *n)`
  *   - `int name##_pop_front(name *n)`
  *   - `int name##_remove(name *n, size_t idx)`
+ *   - `int name##_remove_range(name *n, size_t from, size_t to)`
  *   - `void name##_clear(name *n)`
  *
  * **Queries**
@@ -180,7 +181,7 @@
  *          structs, consider using the generic API with pointers.
  *
  * @note Panics (abort) in debug mode when preconditions are violated.
- *       Define CONTAINER_DEBUG to enable runtime checks.
+ *      LC to enable runtime checks.
  *
  * @endcond
  */
@@ -468,6 +469,12 @@
     static inline LC_UNUSED int name##_remove(name *n, size_t idx) {                                                                                                                    \
         LC_DEQ_DEBUG_NULL(n, #name "_remove");                                                                                                                                          \
         return deque_remove((Deque *)n, idx);                                                                                                                                           \
+    }                                                                                                                                                                                   \
+                                                                                                                                                                                        \
+    /** @brief Remove a range of elements from the deque */                                                                                                                             \
+    static inline LC_UNUSED int name##_remove_range(name *n, size_t from, size_t to) {                                                                                                  \
+        LC_DEQ_DEBUG_NULL(n, #name "_remove_range");                                                                                                                                    \
+        return deque_remove_range((Deque *)n, from, to);                                                                                                                                \
     }                                                                                                                                                                                   \
                                                                                                                                                                                         \
     /** @brief Remove all elements from the deque */                                                                                                                                    \

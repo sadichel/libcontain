@@ -58,7 +58,7 @@
 #include <stdlib.h>
 
 /* Internal debug macros */
-#ifdef CONTAINER_DEBUG
+#ifdef LC_DEBUG
 #include <stdio.h>
 #define LC_SET_DEBUG_NULL(n, func)                                        \
     if (!(n)) {                                                           \

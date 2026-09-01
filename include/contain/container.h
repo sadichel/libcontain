@@ -383,8 +383,8 @@ static inline void array_destroy(Array *arr) {
  *          calling iter_next again.
  */
 static inline const void *iter_next(Iterator *it) {
-    LC_DEBUG_CHECK(it != NULL, "iter_next() - NULL iterator");
-    return it ? it->ops->next(it) : NULL;
+    LC_DEBUG_CHECK(it != NULL, "NULL iterator");
+    return it->ops->next(it);
 }
 
 /**
@@ -456,7 +456,7 @@ static const IteratorVTable ITER_HEAP_OPS = {
  *       or heap-allocating it first; see IntoIter().
  */
 static inline Iterator Iter(const Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "Iter() - NULL container");
+    LC_DEBUG_CHECK(c != NULL, "NULL container");
     return (Iterator){
         .container = c,
         .direction = ITER_FORWARD,
@@ -481,7 +481,7 @@ static inline Iterator Iter(const Container *c) {
  * @warning Mutating c during iteration produces undefined behaviour.
  */
 static inline Iterator IterReverse(const Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "IterReverse() - NULL container");
+    LC_DEBUG_CHECK(c != NULL, "NULL container");
     return (Iterator){
         .container = c,
         .pos = c ? c->len : 0,
@@ -541,7 +541,7 @@ static inline Iterator *IntoIter(Container *c) {
  * @endcode
  */
 static inline Iterator *IntoIterReverse(Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "IntoIterReverse() - NULL container");
+    LC_DEBUG_CHECK(c != NULL, "NULL container");
     Iterator *it = (Iterator *)malloc(sizeof(Iterator));
     if (!it) return NULL;
     *it = (Iterator){
@@ -575,8 +575,8 @@ static inline Iterator *IntoIterReverse(Container *c) {
  *       result container without knowing the concrete type.
  */
 static inline Container *container_instance(const Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "container_instance() - NULL container");
-    return c ? c->ops->instance(c) : NULL;
+    LC_DEBUG_CHECK(c != NULL, "NULL container");
+    return c->ops->instance(c);
 }
 
 /**
@@ -592,8 +592,8 @@ static inline Container *container_instance(const Container *c) {
  *       container_destroy().
  */
 static inline Container *container_clone(const Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "container_clone() - NULL container");
-    return c ? c->ops->clone(c) : NULL;
+    LC_DEBUG_CHECK(c != NULL, "NULL container");
+    return c->ops->clone(c);
 }
 
 /**
@@ -603,8 +603,8 @@ static inline Container *container_clone(const Container *c) {
  * @return Number of elements, or 0 if c is NULL
  */
 static inline size_t container_len(const Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "container_len() - NULL container");
-    return c ? c->len : 0;
+    LC_DEBUG_CHECK(c != NULL, "NULL container");
+    return c->len;
 }
 
 /**
@@ -626,8 +626,8 @@ static inline size_t container_len(const Container *c) {
  *            container_hash(B).
  */
 static inline size_t container_hash(const Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "container_hash() - NULL container");
-    return c ? c->ops->hash(c) : 0;
+    LC_DEBUG_CHECK(c != NULL, "NULL container");
+    return c->ops->hash(c);
 }
 
 /**
@@ -649,8 +649,8 @@ static inline size_t container_hash(const Container *c) {
  *       the order is unspecified.
  */
 static inline Array *container_as_array(const Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "container_as_array() - NULL container");
-    return c ? c->ops->as_array(c) : NULL;
+    LC_DEBUG_CHECK(c != NULL, "NULL container");
+    return c->ops->as_array(c);
 }
 
 /**
@@ -660,8 +660,8 @@ static inline Array *container_as_array(const Container *c) {
  * @return true if container has no elements or c is NULL, false otherwise
  */
 static inline bool container_is_empty(const Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "container_is_empty() - NULL container");
-    return c ? c->len == 0 : true;
+    LC_DEBUG_CHECK(c != NULL, "NULL container");
+    return c->len == 0;
 }
 
 /**
@@ -674,8 +674,8 @@ static inline bool container_is_empty(const Container *c) {
  * @param c Container to clear (can be NULL)
  */
 static inline void container_clear(Container *c) {
-    LC_DEBUG_CHECK(c != NULL, "container_clear() - NULL container");
-    if (c) c->ops->clear(c);
+    LC_DEBUG_CHECK(c != NULL, "NULL container");
+    c->ops->clear(c);
 }
 
 /**

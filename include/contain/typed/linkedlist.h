@@ -58,7 +58,7 @@
 #include <stdlib.h>
 
 /* Internal debug macros */
-#ifdef CONTAINER_DEBUG
+#ifdef LC_DEBUG
 #include <stdio.h>
 #define LC_LIST_DEBUG_NULL(n, func)                                       \
     if (!(n)) {                                                           \
@@ -140,6 +140,7 @@
  *   - `int name##_pop_front(name *n)`
  *   - `int name##_pop_back(name *n)`
  *   - `int name##_remove(name *n, size_t pos)`
+ *   - `int name##_remove_range(name *n, size_t from, size_t to)`
  *   - `void name##_clear(name *n)`
  *
  * **Queries**
@@ -416,6 +417,12 @@
     static inline LC_UNUSED int name##_remove(name *n, size_t pos) {                                                   \
         LC_LIST_DEBUG_NULL(n, #name "_remove");                                                                        \
         return linkedlist_remove((LinkedList *)n, pos);                                                                \
+    }                                                                                                                  \
+                                                                                                                       \
+    /** @brief Remove a range of elements from the list */                                                             \
+    static inline LC_UNUSED int name##_remove_range(name *n, size_t from, size_t to) {                                 \
+        LC_LIST_DEBUG_NULL(n, #name "_remove_range");                                                                  \
+        return linkedlist_remove_range((LinkedList *)n, from, to);                                                     \
     }                                                                                                                  \
                                                                                                                        \
     /** @brief Remove all elements from the list */                                                                    \

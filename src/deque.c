@@ -465,7 +465,7 @@ void deque_destroy(Deque *deq) {
 }
 
 int deque_set_comparator(Deque *deq, lc_Comparator cmp) {
-    if (!deq || !cmp) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     if (deq->container.len > 0) return LC_EBUSY;
     deq->cmp = cmp;
     return LC_OK;
@@ -587,37 +587,44 @@ static int deque_insert_impl(Deque *deq, size_t pos, const void *item) {
 }
 
 int deque_push_back(Deque *deq, const void *item) {
-    if (!deq || !item) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (!item) return LC_EINVAL;
     return deque_insert_impl(deq, deq->container.len, item);
 }
 
 int deque_push_front(Deque *deq, const void *item) {
-    if (!deq || !item) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (!item) return LC_EINVAL;
     return deque_insert_impl(deq, 0, item);
 }
 
 int deque_insert(Deque *deq, size_t pos, const void *item) {
-    if (!deq || !item) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (!item) return LC_EINVAL;
     return deque_insert_impl(deq, pos, item);
 }
 
 int deque_insert_range(Deque *dst, size_t pos, const Deque *src, size_t from, size_t to) {
-    if (!dst || !src) return LC_EINVAL;
+    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
+    LC_DEBUG_CHECK(src != NULL, "NULL source");
     return deque_append_impl(dst, pos, src, from, to);
 }
 
 int deque_append(Deque *dst, const Deque *src) {
-    if (!dst || !src) return LC_EINVAL;
+    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
+    LC_DEBUG_CHECK(src != NULL, "NULL source");
     return deque_append_impl(dst, dst->container.len, src, 0, src->container.len);
 }
 
 int deque_append_range(Deque *dst, const Deque *src, size_t from, size_t to) {
-    if (!dst || !src) return LC_EINVAL;
+    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
+    LC_DEBUG_CHECK(src != NULL, "NULL source");
     return deque_append_impl(dst, dst->container.len, src, from, to);
 }
 
 int deque_set(Deque *deq, size_t pos, const void *item) {
-    if (!deq || !item) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (!item) return LC_EINVAL;
     if (pos >= deq->container.len) return LC_EBOUNDS;
 
     void *slot = deque_slot_at(deq, pos);
@@ -627,28 +634,30 @@ int deque_set(Deque *deq, size_t pos, const void *item) {
 }
 
 int deque_remove(Deque *deq, size_t pos) {
-    if (!deq) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     if (pos >= deq->container.len) return LC_EBOUNDS;
     return deque_free_slot(deq, pos, pos + 1);
 }
 
 int deque_remove_range(Deque *deq, size_t from, size_t to) {
-    if (!deq) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     return deque_free_slot(deq, from, to);
 }
 
 int deque_pop_front(Deque *deq) {
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (deq->container.len == 0) return LC_EBOUNDS;
     return deque_remove(deq, 0);
 }
 
 int deque_pop_back(Deque *deq) {
-    if (!deq) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     if (deq->container.len == 0) return LC_EBOUNDS;
     return deque_free_slot(deq, deq->container.len - 1, deq->container.len);
 }
 
 int deque_shrink_to_fit(Deque *deq) {
-    if (!deq) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
 
     const size_t len = deq->container.len;
     const size_t cap = deq->container.capacity;
@@ -685,7 +694,7 @@ int deque_trim(Deque *deq) {
 }
 
 int deque_reserve(Deque *deq, size_t new_cap) {
-    if (!deq) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
 
     size_t old_cap = deq->container.capacity;
     if (new_cap <= old_cap) return LC_OK;
@@ -715,7 +724,7 @@ int deque_reserve(Deque *deq, size_t new_cap) {
 }
 
 int deque_resize(Deque *deq, size_t new_len) {
-    if (!deq) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
 
     size_t old_len = deq->container.len;
     if (new_len == old_len) return LC_OK;
@@ -738,7 +747,7 @@ int deque_resize(Deque *deq, size_t new_len) {
 }
 
 int deque_clear(Deque *deq) {
-    if (!deq) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     if (deq->container.len == 0) return LC_OK;
 
     if (deq->impl->owned && deq->impl->item_size == 0) {
@@ -761,7 +770,8 @@ int deque_clear(Deque *deq) {
 }
 
 int deque_reverse_inplace(Deque *deq) {
-    if (!deq || deq->container.len < 2) return LC_OK;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (deq->container.len < 2) return LC_OK;
 
     const size_t len = deq->container.len;
     const size_t cap = deq->container.capacity;
@@ -790,7 +800,7 @@ int deque_reverse_inplace(Deque *deq) {
 }
 
 int deque_splice(Deque *dst, size_t pos, size_t remove_count, const Deque *src, size_t src_from, size_t src_to) {
-    if (!dst) return LC_EINVAL;
+    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
     if (pos > dst->container.len) return LC_EBOUNDS;
     if (remove_count > dst->container.len - pos) return LC_EBOUNDS;
 
@@ -881,7 +891,8 @@ int deque_splice(Deque *dst, size_t pos, size_t remove_count, const Deque *src, 
 }
 
 int deque_unique(Deque *deq) {
-    if (!deq || deq->container.len < 2) return LC_OK;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (deq->container.len < 2) return LC_OK;
 
     int rc = deque_normalize(deq);
     if (rc != LC_OK) return rc;
@@ -962,7 +973,7 @@ int deque_unique(Deque *deq) {
 }
 
 int deque_sort(Deque *deq, lc_Comparator cmp) {
-    if (!deq) return LC_EINVAL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     if (deq->container.len < 2) return LC_OK;
 
     int rc = deque_normalize(deq);
@@ -980,46 +991,50 @@ int deque_sort(Deque *deq, lc_Comparator cmp) {
  * Queries & utilities
  * ------------------------------------------------------------------------- */
 const void *deque_at(const Deque *deq, size_t pos) {
-    if (!deq) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     void *slot = deque_slot_at((Deque *)deq, pos);
     return slot ? lc_slot_get(slot, deq->impl->item_size) : NULL;
 }
 
 const void *deque_front(const Deque *deq) {
-    if (!deq) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     void *slot = deque_slot_at((Deque *)deq, 0);
     return slot ? lc_slot_get(slot, deq->impl->item_size) : NULL;
 }
 
 const void *deque_back(const Deque *deq) {
-    if (!deq || deq->container.len == 0) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (deq->container.len == 0) return NULL;
     void *slot = deque_slot_at((Deque *)deq, deq->container.len - 1);
     return slot ? lc_slot_get(slot, deq->impl->item_size) : NULL;
 }
 
 void *deque_at_mut(Deque *deq, size_t pos) {
-    if (!deq) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     return deque_slot_at(deq, pos);
 }
 
 void *deque_front_mut(Deque *deq) {
-    if (!deq) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     return deque_slot_at(deq, 0);
 }
 
 void *deque_back_mut(Deque *deq) {  
-    if (!deq || deq->container.len == 0) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (deq->container.len == 0) return NULL;
     return deque_slot_at(deq, deq->container.len - 1);
 }
 
 void *deque_as_slice(Deque *deq) {
-    if (!deq || deq->container.len == 0) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (deq->container.len == 0) return NULL;
     if (deque_normalize(deq) != LC_OK) return NULL;
     return deq->container.items;
 }
 
 size_t deque_find(const Deque *deq, const void *item) {
-    if (!deq || !item || deq->container.len == 0) return DEQ_NPOS;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (!item || deq->container.len == 0) return DEQ_NPOS;
 
     const DequeImpl *impl = deq->impl;
     const size_t len = deq->container.len;
@@ -1043,7 +1058,8 @@ size_t deque_find(const Deque *deq, const void *item) {
 }
 
 size_t deque_rfind(const Deque *deq, const void *item) {
-    if (!deq || !item || deq->container.len == 0) return DEQ_NPOS;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (!item || deq->container.len == 0) return DEQ_NPOS;
 
     const DequeImpl *impl = deq->impl;
     const size_t len = deq->container.len;
@@ -1068,15 +1084,19 @@ size_t deque_rfind(const Deque *deq, const void *item) {
 }
 
 bool deque_contains(const Deque *deq, const void *item) {
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (!item || deq->container.len == 0) return false;
     return deque_find(deq, item) != DEQ_NPOS;
 }
 
 bool deque_is_empty(const Deque *deq) {
-    return !deq || deq->container.len == 0;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    return deq->container.len == 0;
 }
 
 size_t deque_len(const Deque *deq) {
-    return deq ? deq->container.len : 0;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    return deq->container.len;
 }
 
 size_t deque_size(const Deque *deq) {
@@ -1084,11 +1104,13 @@ size_t deque_size(const Deque *deq) {
 }
 
 size_t deque_capacity(const Deque *deq) {
-    return deq ? deq->container.capacity : 0;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    return deq->container.capacity;
 }
 
 size_t deque_hash(const Deque *deq) {
-    if (!deq || deq->container.len == 0) return 0;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (deq->container.len == 0) return 0;
 
     DequeImpl *impl = (DequeImpl *)deq->impl;
     const size_t len = deq->container.len;
@@ -1111,8 +1133,9 @@ size_t deque_hash(const Deque *deq) {
 }
 
 bool deque_equals(const Deque *A, const Deque *B) {
+    LC_DEBUG_CHECK(A != NULL, "NULL deque A");
+    LC_DEBUG_CHECK(B != NULL, "NULL deque B");
     if (A == B) return true;
-    if (!A || !B) return false;
 
     const DequeImpl *impl_a = A->impl;
     const DequeImpl *impl_b = B->impl;
@@ -1152,7 +1175,7 @@ bool deque_equals(const Deque *A, const Deque *B) {
  * Copy & view operations
  * ------------------------------------------------------------------------- */
 Deque *deque_reverse(const Deque *deq) {
-    if (!deq) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
 
     Deque *rev = deque_create_from_impl(deq, deq->container.len);
     if (!rev) return NULL;
@@ -1183,7 +1206,7 @@ Deque *deque_reverse(const Deque *deq) {
 }
 
 Deque *deque_clone(const Deque *deq) {
-    if (!deq) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
 
     Deque *clone = deque_create_from_impl(deq, deq->container.capacity);
     if (!clone) return NULL;
@@ -1223,7 +1246,8 @@ Deque *deque_clone(const Deque *deq) {
 }
 
 Deque *deque_slice(const Deque *deq, size_t start, size_t end) {
-    if (!deq || start >= end || end > deq->container.len) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
+    if (start >= end || end > deq->container.len) return NULL;
 
     const size_t count = end - start;
     Deque *slice = deque_create_from_impl(deq, count);
@@ -1264,7 +1288,7 @@ Deque *deque_slice(const Deque *deq, size_t start, size_t end) {
 }
 
 Deque *deque_instance(const Deque *deq) {
-    if (!deq) return NULL;
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     return deque_create_from_impl(deq, DEQUE_MIN_CAPACITY);
 }
 
@@ -1378,8 +1402,7 @@ static Array *deque_collect_strings(const Deque *deq) {
 }
 
 Array *deque_to_array(const Deque *deq) {
-    if (!deq) return NULL;
-
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     if (deq->impl->item_size == 0) {
         return deque_collect_strings(deq);
     }
@@ -1404,10 +1427,12 @@ static const void *deque_next(Iterator *it) {
 }
 
 Iterator deque_iter(const Deque *deq) {
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     return Iter((const Container *)deq);
 }
 
 Iterator deque_iter_reversed(const Deque *deq) {
+    LC_DEBUG_CHECK(deq != NULL, "NULL deque");
     return IterReverse((const Container *)deq);
 }
 

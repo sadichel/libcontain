@@ -90,17 +90,18 @@ int test_linkedlist_alignment_32(void) {
     LinkedList *list = linkedlist_create_aligned(sizeof(Aligned32), 32);
     ASSERT_NOT_NULL(list, "create_aligned failed");
 
+    
     Aligned32 item = {0};
     for (int i = 0; i < 8; i++) {
         item.data[0] = (uint8_t)i;
         ASSERT_EQUAL(linkedlist_push_back(list, &item), LC_OK, "push failed");
     }
-
+    
     for (size_t i = 0; i < 8; i++) {
         const void *ptr = linkedlist_at(list, i);
         ASSERT_TRUE(((uintptr_t)ptr % 32) == 0, "element not 32-byte aligned");
     }
-
+    
     linkedlist_destroy(list);
     return 1;
 }

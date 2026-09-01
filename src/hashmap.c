@@ -46,8 +46,8 @@ struct HashMapImpl {
     uint16_t key_size;
     uint16_t val_size;
     uint32_t stride;
-    uint8_t key_owned;
-    uint8_t val_owned;
+    uint8_t  key_owned;
+    uint8_t  val_owned;
 };
 
 /* Hash entry stored in buckets */
@@ -539,14 +539,17 @@ void hashmap_destroy(HashMap *map) {
 }
 
 int hashmap_set_hasher(HashMap *map, lc_Hasher hasher) {
-    if (!map || !hasher) return LC_EINVAL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    LC_DEBUG_CHECK(hasher != NULL, "NULL hasher");
     if (map->container.len != 0) return LC_EBUSY;
     map->khash = hasher;
     return LC_OK;
 }
 
 int hashmap_set_comparator(HashMap *map, lc_Comparator kcmp, lc_Comparator vcmp) {
-    if (!map || !kcmp || !vcmp) return LC_EINVAL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    LC_DEBUG_CHECK(kcmp != NULL, "NULL key comparator");
+    LC_DEBUG_CHECK(vcmp != NULL, "NULL value comparator");
     if (map->container.len != 0) return LC_EBUSY;
     map->kcmp = kcmp;
     map->vcmp = vcmp;
@@ -554,7 +557,8 @@ int hashmap_set_comparator(HashMap *map, lc_Comparator kcmp, lc_Comparator vcmp)
 }
 
 int hashmap_set_allocator(HashMap *map, Allocator *alloc) {
-    if (!map || !alloc) return LC_EINVAL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    LC_DEBUG_CHECK(alloc != NULL, "NULL allocator");
     if (map->container.len != 0) return LC_EBUSY;
     
     if (allocator_stride(alloc) < map->impl->stride)
@@ -599,24 +603,28 @@ static void *hashmap_get_impl(const HashMap *map, const void *key, size_t bucket
 }
 
 const void *hashmap_get(const HashMap *map, const void *key) {
-    if (!map || !key) return NULL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    if (!key) return NULL;
     void *val_slot = hashmap_get_impl(map, key, hashmap_bucket(map, key));
     return  val_slot ? lc_slot_get(val_slot, map->impl->val_size) : NULL;
 }
 
 const void *hashmap_get_or_default(const HashMap *map, const void *key, const void *dval) {
-    if (!map || !key) return dval;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    if (!key) return dval;
     void *val_slot = hashmap_get_impl(map, key, hashmap_bucket(map, key));
     return val_slot ? lc_slot_get(val_slot, map->impl->val_size) : dval;
 }
 
 void *hashmap_get_mut(const HashMap *map, const void *key) {
-    if (!map || !key) return NULL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    if (!key) return NULL;
     return hashmap_get_impl(map, key, hashmap_bucket(map, key));
 }
 
 void *hashmap_get_mut_or_default(const HashMap *map, const void *key, const void *dval) {
-    if (!map || !key) return (void *)dval;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    if (!key) return (void *)dval;
     void *val_slot = hashmap_get_impl(map, key, hashmap_bucket(map, key));
     return val_slot ? val_slot : (void *)dval;
 }
@@ -661,7 +669,8 @@ static int hashmap_insert_impl(HashMap *map, const void *key, const void *val, s
 }
 
 int hashmap_insert(HashMap *map, const void *key, const void *val) {
-    if (!map || !key || !val) return LC_EINVAL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    if (!key || !val) return LC_EINVAL;
     int rc = hashmap_insert_impl(map, key, val, hashmap_bucket(map, key));
     if (rc != LC_OK) return rc;
     return hashmap_adjust_capacity(map, false);
@@ -706,14 +715,16 @@ static int hashmap_remove_impl(HashMap *map, const void *key, const void *val, s
 }
 
 int hashmap_remove(HashMap *map, const void *key) {
-    if (!map || !key) return LC_EINVAL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    if (!key) return LC_EINVAL;
     int rc = hashmap_remove_impl(map, key, NULL, hashmap_bucket(map, key));
     if (rc != LC_OK) return rc;
     return hashmap_adjust_capacity(map, true);
 }
 
 int hashmap_remove_entry(HashMap *map, const void *key, const void *val) {
-    if (!map || !key || !val) return LC_EINVAL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    if (!key || !val) return LC_EINVAL;
     int rc = hashmap_remove_impl(map, key, val, hashmap_bucket(map, key));
     if (rc != LC_OK) return rc;
     return hashmap_adjust_capacity(map, true);
@@ -747,12 +758,14 @@ static bool hashmap_contains_impl(const HashMap *map, const void *key, const voi
 }
 
 bool hashmap_contains(const HashMap *map, const void *key) {
-    if (!map || !key) return false;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    if (!key) return false;
     return hashmap_contains_impl(map, key, NULL, hashmap_bucket(map, key));
 }
 
 bool hashmap_contains_entry(const HashMap *map, const void *key, const void *val) {
-    if (!map || !key || !val) return false;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    if (!key || !val) return false;
     return hashmap_contains_impl(map, key, val, hashmap_bucket(map, key));
 }
 
@@ -822,7 +835,8 @@ static int hashmap_merge_impl(HashMap *dst, const HashMap *src) {
 }
 
 int hashmap_merge(HashMap *dst, const HashMap *src) {
-    if (!dst || !src) return LC_EINVAL;
+    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
+    LC_DEBUG_CHECK(src != NULL, "NULL source");
     if (dst == src) return LC_OK;
 
     if (dst->kcmp != src->kcmp) return LC_ETYPE;
@@ -838,7 +852,7 @@ int hashmap_merge(HashMap *dst, const HashMap *src) {
 }
 
 int hashmap_reserve(HashMap *map, size_t expected) {
-    if (!map) return LC_EINVAL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
     if (expected == 0) return LC_OK;
 
     if (expected > (SIZE_MAX / 4) * 3) return LC_EOVERFLOW;
@@ -853,7 +867,7 @@ int hashmap_reserve(HashMap *map, size_t expected) {
 }
 
 int hashmap_clear(HashMap *map) {
-    if (!map) return LC_EINVAL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
 
     HashMapEntry **buckets = (HashMapEntry **)map->container.items;
     size_t cap = map->container.capacity;
@@ -872,20 +886,36 @@ int hashmap_clear(HashMap *map) {
 }
 
 int hashmap_shrink_to_fit(HashMap *map) {
-    if (!map) return LC_EINVAL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
     return hashmap_adjust_capacity(map, true);
 }
 
 /* -------------------------------------------------------------------------
  * Queries
  * ------------------------------------------------------------------------- */
-size_t hashmap_len(const HashMap *map) { return map ? map->container.len : 0; }
-size_t hashmap_size(const HashMap *map) { return hashmap_len(map); }
-size_t hashmap_capacity(const HashMap *map) { return map ? map->container.capacity : 0; }
-bool hashmap_is_empty(const HashMap *map) { return !map || map->container.len == 0; }
+size_t hashmap_len(const HashMap *map) { 
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    return map->container.len; 
+}
+
+size_t hashmap_size(const HashMap *map) {
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    return hashmap_len(map); 
+}
+
+size_t hashmap_capacity(const HashMap *map) { 
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    return map->container.capacity; 
+}
+
+bool hashmap_is_empty(const HashMap *map) { 
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    return map->container.len == 0; 
+}
 
 size_t hashmap_hash(const HashMap *map) {
-    if (!map || map->container.len == 0) return 0;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    if (map->container.len == 0) return 0;
     
     HashMapImpl *impl = (HashMapImpl *)map->impl;
     const size_t cap = map->container.capacity;
@@ -911,6 +941,9 @@ size_t hashmap_hash(const HashMap *map) {
 }
 
 static bool hashmap_submap(const HashMap *A, const HashMap *B) {
+    LC_DEBUG_CHECK(A != NULL, "NULL map A");
+    LC_DEBUG_CHECK(B != NULL, "NULL map B");
+    if (A == B) return true;
     if (A->container.len > B->container.len) return false;
 
     HashMapEntry **a_buckets = (HashMapEntry **)A->container.items;
@@ -940,7 +973,8 @@ static bool hashmap_submap(const HashMap *A, const HashMap *B) {
 }
 
 bool hashmap_equals(const HashMap *A, const HashMap *B) {
-    if (!A || !B) return false;
+    LC_DEBUG_CHECK(A != NULL, "NULL map A");
+    LC_DEBUG_CHECK(B != NULL, "NULL map B");
     if (A == B) return true;
     if (A->container.len != B->container.len) return false;
 
@@ -955,13 +989,15 @@ bool hashmap_equals(const HashMap *A, const HashMap *B) {
 }
 
 const void *hashmap_entry_key(const HashMap *map, const void *entry_ptr) {
-    if (!map || !entry_ptr) return NULL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    LC_DEBUG_CHECK(entry_ptr != NULL, "NULL entry");
     const HashMapImpl *impl = map->impl;
     return lc_slot_get(lc_slot_at((void *)entry_ptr, impl->key_offset), impl->key_size);
 }
 
 const void *hashmap_entry_value(const HashMap *map, const void *entry_ptr) {
-    if (!map || !entry_ptr) return NULL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    LC_DEBUG_CHECK(entry_ptr != NULL, "NULL entry");
     const HashMapImpl *impl = map->impl;
     return lc_slot_get(lc_slot_at((void *)entry_ptr, impl->val_offset), impl->val_size);
 }
@@ -974,24 +1010,29 @@ HashMapPair hashmap_entry_pair(const HashMap *map, const void *entry_ptr) {
 }
 
 void *hashmap_entry_key_mut(const HashMap *map, const void *entry_ptr) {
-    if (!map || !entry_ptr) return NULL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    LC_DEBUG_CHECK(entry_ptr != NULL, "NULL entry");
     const HashMapImpl *impl = map->impl;
     return lc_slot_at((void *)entry_ptr, impl->key_offset);
 }
 
 void *hashmap_entry_value_mut(const HashMap *map, const void *entry_ptr) {
-    if (!map || !entry_ptr) return NULL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    LC_DEBUG_CHECK(entry_ptr != NULL, "NULL entry");
     const HashMapImpl *impl = map->impl;
     return lc_slot_at((void *)entry_ptr, impl->val_offset);
 }
 
-Allocator *hashmap_allocator(const HashMap *map) { return map ? map->alloc : NULL; }
+Allocator *hashmap_allocator(const HashMap *map) { 
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
+    return map->alloc; 
+}
 
 /* -------------------------------------------------------------------------
  * Clone
  * ------------------------------------------------------------------------- */
 HashMap *hashmap_clone(const HashMap *map) {
-    if (!map) return NULL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
 
     HashMap *clone = hashmap_create_from_impl(map, map->container.capacity, false);
     if (!clone) return NULL;
@@ -1005,7 +1046,7 @@ HashMap *hashmap_clone(const HashMap *map) {
 }
 
 HashMap *hashmap_instance(const HashMap *map) {
-    if (!map) return NULL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
     return hashmap_create_from_impl(map, HASHMAP_MIN_CAPACITY, false);
 }
 
@@ -1095,14 +1136,14 @@ static Array *hashmap_collect_strings(const HashMap *map, bool want_values) {
 }
 
 Array *hashmap_keys(const HashMap *map) {
-    if (!map) return NULL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
     const HashMapImpl *impl = map->impl;
     if (impl->key_size) return hashmap_collect_fixed(map, impl->key_size, false);
     return hashmap_collect_strings(map, false);
 }
 
 Array *hashmap_values(const HashMap *map) {
-    if (!map) return NULL;
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
     const HashMapImpl *impl = map->impl;
     if (impl->val_size) return hashmap_collect_fixed(map, impl->val_size, true);
     return hashmap_collect_strings(map, true);
@@ -1134,6 +1175,7 @@ static const void *hashmap_next(Iterator *it) {
 }
 
 Iterator hashmap_iter(const HashMap *map) {
+    LC_DEBUG_CHECK(map != NULL, "NULL map");
     return Iter((const Container *)map);
 }
 

@@ -42,14 +42,14 @@ typedef union {
 #endif
 
 /* Enable debug output by defining CONTAINER_DEBUG before including this header */
-#ifdef CONTAINER_DEBUG
+#ifdef LC_DEBUG
 #include <stdio.h>
 #define LC_DEBUG_PRINT(msg) fprintf(stderr, "%s\n", msg)
 
 #define LC_DEBUG_CHECK(cond, msg) \
     do { \
         if (!(cond)) { \
-            fprintf(stderr, "libcontain panic: " msg "\n"); \
+            fprintf(stderr, "libcontain panic: %s - " msg "\n", __func__); \
             abort(); \
         } \
     } while(0)

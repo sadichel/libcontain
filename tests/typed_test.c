@@ -125,10 +125,8 @@ static int test_vector_int_basic(void) {
     return 1;
 }
 
-static int test_vector_int_pop(void) {
+static int test_vector_int_pop_insert_remove(void) {
     IntVector *vec = IntVector_create();
-    ASSERT_NOT_NULL(vec, "IntVector_create");
-
     IntVector_push(vec, 10);
     IntVector_push(vec, 20);
     IntVector_push(vec, 30);
@@ -141,6 +139,14 @@ static int test_vector_int_pop(void) {
     IntVector_remove(vec, 0);
     ASSERT_EQUAL(IntVector_len(vec), 1, "len after remove is 1");
     ASSERT_EQUAL(IntVector_at(vec, 0), 20, "first element after remove is 20");
+
+    IntVector_insert(vec, 1, 15);
+    ASSERT_EQUAL(IntVector_len(vec), 2, "len after insert is 2");
+    ASSERT_EQUAL(IntVector_at(vec, 1), 15, "insert at index 1");
+
+    IntVector_remove(vec, 1);
+    ASSERT_EQUAL(IntVector_len(vec), 1, "len after remove is 1");
+    ASSERT_EQUAL(IntVector_at(vec, 0), 20, "after remove at index 1");
 
     IntVector_clear(vec);
     ASSERT_EQUAL(IntVector_len(vec), 0, "clear sets len to 0");
@@ -329,6 +335,24 @@ static int test_vector_slice_clone(void) {
     IntVector_destroy(vec);
     IntVector_destroy(slice);
     IntVector_destroy(clone);
+    return 1;
+}
+
+static int test_vector_remove_range(void) {
+    IntVector *vec = IntVector_create();
+    for (int i = 0; i < 10; i++) {
+        IntVector_push(vec, i);
+    }
+
+    IntVector_remove_range(vec, 3, 7);
+    ASSERT_EQUAL(IntVector_len(vec), 6, "wrong length after remove_range");
+    
+    int expected[] = {0, 1, 2, 7, 8, 9};
+    for (size_t i = 0; i < 6; i++) {
+        ASSERT_EQUAL(IntVector_at(vec, i), expected[i], "wrong value after remove_range");
+    }
+
+    IntVector_destroy(vec);
     return 1;
 }
 
@@ -571,6 +595,24 @@ static int test_deque_slice_clone(void) {
     return 1;
 }
 
+static int test_deque_remove_range(void) {
+    IntDeque *deq = IntDeque_create();
+    for (int i = 0; i < 10; i++) {
+        IntDeque_push_back(deq, i);
+    }
+
+    IntDeque_remove_range(deq, 3, 7);
+    ASSERT_EQUAL(IntDeque_len(deq), 6, "wrong length after remove_range");
+    
+    int expected[] = {0, 1, 2, 7, 8, 9};
+    for (size_t i = 0; i < 6; i++) {
+        ASSERT_EQUAL(IntDeque_at(deq, i), expected[i], "wrong value after remove_range");
+    }
+
+    IntDeque_destroy(deq);
+    return 1;
+}
+
 /* ============================================================================
  * LinkedList Tests 
  * ============================================================================ */
@@ -801,6 +843,24 @@ static int test_list_clone(void) {
 
     IntList_destroy(list);
     IntList_destroy(clone);
+    return 1;
+}
+
+static int test_list_remove_range(void) {
+    IntList *list = IntList_create();
+    for (int i = 0; i < 10; i++) {
+        IntList_push_back(list, i);
+    }
+
+    IntList_remove_range(list, 3, 7);
+    ASSERT_EQUAL(IntList_len(list), 6, "wrong length after remove_range");
+    
+    int expected[] = {0, 1, 2, 7, 8, 9};
+    for (size_t i = 0; i < 6; i++) {
+        ASSERT_EQUAL(IntList_at(list, i), expected[i], "wrong value after remove_range");
+    }
+
+    IntList_destroy(list);
     return 1;
 }
 
@@ -1838,7 +1898,7 @@ int main(void) {
 
     /* Vector Tests */
     TEST(test_vector_int_basic);
-    TEST(test_vector_int_pop);
+    TEST(test_vector_int_pop_insert_remove);
     TEST(test_vector_int_find);
     TEST(test_vector_int_sort_reverse);
     TEST(test_vector_string);
@@ -1846,6 +1906,8 @@ int main(void) {
     TEST(test_vector_double);
     TEST(test_vector_struct);
     TEST(test_vector_slice_clone);
+    TEST(test_vector_remove_range);
+
 
     /* Deque Tests */
     TEST(test_deque_int_basic);
@@ -1857,6 +1919,7 @@ int main(void) {
     TEST(test_deque_double);
     TEST(test_deque_struct);
     TEST(test_deque_slice_clone);
+    TEST(test_deque_remove_range);
 
     /* LinkedList Tests */
     TEST(test_list_int_basic);
@@ -1868,6 +1931,7 @@ int main(void) {
     TEST(test_list_double);
     TEST(test_list_struct);
     TEST(test_list_clone);
+    TEST(test_list_remove_range);
 
     /* HashSet Tests */
     TEST(test_set_int_basic);
