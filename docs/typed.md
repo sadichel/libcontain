@@ -467,6 +467,7 @@ For `DECL_VECTOR_TYPE(int, sizeof(int), IntVector)`, the following functions are
 |----------|-------------|
 | `int IntVector_pop(IntVector *n)` | Remove last element |
 | `int IntVector_remove(IntVector *n, size_t idx)` | Remove at index |
+| `int IntVector_remove_range(IntVector *dst, size_t from, size_t to)` | Remove range |
 | `void IntVector_clear(IntVector *n)` | Remove all elements |
 
 ---
