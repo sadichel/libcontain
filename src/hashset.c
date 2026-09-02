@@ -508,7 +508,7 @@ static int hashset_insert_impl(HashSet *set, const void *item, size_t bucket) {
 
 int hashset_insert(HashSet *set, const void *item) {
     LC_DEBUG_CHECK(set != NULL, "NULL set");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     int rc = hashset_insert_impl(set, item, hashset_bucket(set, item));
     if (rc != LC_OK) return rc;
     return hashset_adjust_capacity(set, false);
@@ -541,7 +541,7 @@ static int hashset_remove_impl(HashSet *set, const void *item, size_t bucket) {
 
 int hashset_remove(HashSet *set, const void *item) {
     LC_DEBUG_CHECK(set != NULL, "NULL set");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     int rc = hashset_remove_impl(set, item, hashset_bucket(set, item));
     if (rc != LC_OK) return rc;
     return hashset_adjust_capacity(set, true);
@@ -567,7 +567,7 @@ static bool hashset_contains_impl(const HashSet *set, const void *item, size_t b
 
 bool hashset_contains(const HashSet *set, const void *item) {
     LC_DEBUG_CHECK(set != NULL, "NULL set");
-    if (!item) return false;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return hashset_contains_impl(set, item, hashset_bucket(set, item));
 }
 
@@ -635,8 +635,8 @@ static int hashset_merge_impl(HashSet *dst, const HashSet *src) {
 }
 
 int hashset_merge(HashSet *dst, const HashSet *src) {
-    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
-    LC_DEBUG_CHECK(src != NULL, "NULL source");
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst set");
+    LC_DEBUG_CHECK(src != NULL, "NULL src set");
     if (dst == src) return LC_OK;
     
     if (dst->impl->item_size != src->impl->item_size) 

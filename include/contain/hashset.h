@@ -713,6 +713,8 @@ Iterator hashset_iter(const HashSet *set);
  *   • Set operations (union/intersection/difference) create new sets
  * ============================================================================ */
 
+#include <contain/hashset.h>
+ 
 /* -------------------------------------------------------------------------
  * Container vtable
  * ------------------------------------------------------------------------- */
@@ -1141,21 +1143,22 @@ void hashset_destroy(HashSet *set) {
 }
 
 int hashset_set_hasher(HashSet *set, lc_Hasher hasher) {
-    if (!set || !hasher) return LC_EINVAL;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
     if (set->container.len > 0) return LC_EBUSY;
     set->hash = hasher;
     return LC_OK;
 }
 
 int hashset_set_comparator(HashSet *set, lc_Comparator cmp) {
-    if (!set || !cmp) return LC_EINVAL;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
     if (set->container.len > 0) return LC_EBUSY;
     set->cmp = cmp;
     return LC_OK;
 }
 
 int hashset_set_allocator(HashSet *set, Allocator *alloc) {
-    if (!set || !alloc) return LC_EINVAL;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
+    LC_DEBUG_CHECK(alloc != NULL, "NULL allocator");
     if (set->container.len > 0) return LC_EBUSY;
     
     if (allocator_stride(alloc) < set->impl->stride) {
@@ -1205,7 +1208,8 @@ static int hashset_insert_impl(HashSet *set, const void *item, size_t bucket) {
 }
 
 int hashset_insert(HashSet *set, const void *item) {
-    if (!set || !item) return LC_EINVAL;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     int rc = hashset_insert_impl(set, item, hashset_bucket(set, item));
     if (rc != LC_OK) return rc;
     return hashset_adjust_capacity(set, false);
@@ -1237,7 +1241,8 @@ static int hashset_remove_impl(HashSet *set, const void *item, size_t bucket) {
 }
 
 int hashset_remove(HashSet *set, const void *item) {
-    if (!set || !item) return LC_EINVAL;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     int rc = hashset_remove_impl(set, item, hashset_bucket(set, item));
     if (rc != LC_OK) return rc;
     return hashset_adjust_capacity(set, true);
@@ -1262,7 +1267,8 @@ static bool hashset_contains_impl(const HashSet *set, const void *item, size_t b
 }
 
 bool hashset_contains(const HashSet *set, const void *item) {
-    if (!set || !item) return false;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return hashset_contains_impl(set, item, hashset_bucket(set, item));
 }
 
@@ -1330,7 +1336,8 @@ static int hashset_merge_impl(HashSet *dst, const HashSet *src) {
 }
 
 int hashset_merge(HashSet *dst, const HashSet *src) {
-    if (!dst || !src) return LC_EINVAL;
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst set");
+    LC_DEBUG_CHECK(src != NULL, "NULL src set");
     if (dst == src) return LC_OK;
     
     if (dst->impl->item_size != src->impl->item_size) 
@@ -1340,7 +1347,7 @@ int hashset_merge(HashSet *dst, const HashSet *src) {
 }
 
 int hashset_reserve(HashSet *set, size_t expected) {
-    if (!set) return LC_EINVAL;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
     if (expected == 0) return LC_OK;
 
     if (expected > (SIZE_MAX / 4) * 3) return LC_EOVERFLOW;
@@ -1355,7 +1362,7 @@ int hashset_reserve(HashSet *set, size_t expected) {
 }
 
 int hashset_clear(HashSet *set) {
-    if (!set) return LC_EINVAL;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
     
     HashSetEntry **buckets = (HashSetEntry **)set->container.items;
     const size_t cap = set->container.capacity;
@@ -1374,20 +1381,35 @@ int hashset_clear(HashSet *set) {
 }
 
 int hashset_shrink_to_fit(HashSet *set) {
-    if (!set) return LC_EINVAL;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
     return hashset_adjust_capacity(set, true);
 }
 
 /* -------------------------------------------------------------------------
  * Queries
  * ------------------------------------------------------------------------- */
-size_t hashset_len(const HashSet *set) { return set ? set->container.len : 0; }
-size_t hashset_size(const HashSet *set) { return hashset_len(set); }
-size_t hashset_capacity(const HashSet *set) { return set ? set->container.capacity : 0; }
-bool hashset_is_empty(const HashSet *set) { return !set || set->container.len == 0; }
+size_t hashset_len(const HashSet *set) { 
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
+    return set->container.len; 
+}
+
+size_t hashset_size(const HashSet *set) { 
+    return hashset_len(set); 
+}
+
+size_t hashset_capacity(const HashSet *set) { 
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
+    return set->container.capacity; 
+}
+
+bool hashset_is_empty(const HashSet *set) {
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
+    return set->container.len == 0; 
+}
 
 size_t hashset_hash(const HashSet *set) {
-    if (!set || set->container.len == 0) return 0;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
+    if (set->container.len == 0) return 0;
 
     HashSetEntry **buckets = (HashSetEntry **)set->container.items;
     HashSetImpl *impl = (HashSetImpl *)set->impl;
@@ -1410,7 +1432,8 @@ size_t hashset_hash(const HashSet *set) {
 }
 
 bool hashset_subset(const HashSet *A, const HashSet *B) {
-    if (!A || !B) return false;
+    LC_DEBUG_CHECK(A != NULL, "NULL set A");
+    LC_DEBUG_CHECK(B != NULL, "NULL set B");
     if (A->container.len > B->container.len) return false;
 
     const HashSetImpl *ai = A->impl;
@@ -1439,7 +1462,8 @@ bool hashset_subset(const HashSet *A, const HashSet *B) {
 }
 
 bool hashset_equals(const HashSet *A, const HashSet *B) {
-    if (!A || !B) return false;
+    LC_DEBUG_CHECK(A != NULL, "NULL set A");
+    LC_DEBUG_CHECK(B != NULL, "NULL set B");
     if (A == B) return true;
     if (A->container.len != B->container.len) return false;
     
@@ -1449,14 +1473,15 @@ bool hashset_equals(const HashSet *A, const HashSet *B) {
 }
 
 Allocator *hashset_allocator(const HashSet *set) { 
-    return set ? set->alloc : NULL; 
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
+    return set->alloc; 
 }
 
 /* -------------------------------------------------------------------------
  * Clone
  * ------------------------------------------------------------------------- */
 HashSet *hashset_clone(const HashSet *set) {
-    if (!set) return NULL;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
 
     HashSet *clone = hashset_create_from_impl(set, set->container.capacity, false);
     if (!clone) return NULL;
@@ -1470,7 +1495,7 @@ HashSet *hashset_clone(const HashSet *set) {
 }
 
 HashSet *hashset_instance(const HashSet *set) {
-    if (!set) return NULL;
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
     return hashset_create_from_impl(set, HASHSET_MIN_CAPACITY, false);
 }
 
@@ -1555,8 +1580,7 @@ static Array *hashset_collect_strings(const HashSet *set) {
 }
 
 Array *hashset_to_array(const HashSet *set) {
-    if (!set) return NULL;
-
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
     if (set->impl->item_size) {
         return hashset_collect_fixed(set, set->impl->item_size);
     } 
@@ -1567,7 +1591,8 @@ Array *hashset_to_array(const HashSet *set) {
  * Set operations
  * ------------------------------------------------------------------------- */
 HashSet *hashset_union(const HashSet *A, const HashSet *B) {
-    if (!A || !B) return NULL;
+    LC_DEBUG_CHECK(A != NULL, "NULL set A");
+    LC_DEBUG_CHECK(B != NULL, "NULL set B");
 
     if (A == B) return hashset_clone(A);
 
@@ -1589,7 +1614,8 @@ HashSet *hashset_union(const HashSet *A, const HashSet *B) {
 }
 
 HashSet *hashset_intersection(const HashSet *A, const HashSet *B) {
-    if (!A || !B) return NULL;
+    LC_DEBUG_CHECK(A != NULL, "NULL set A");
+    LC_DEBUG_CHECK(B != NULL, "NULL set B");
     if (A == B) return hashset_clone(A);
 
     const HashSetImpl *ai = A->impl;
@@ -1629,7 +1655,8 @@ HashSet *hashset_intersection(const HashSet *A, const HashSet *B) {
 }
 
 HashSet *hashset_difference(const HashSet *A, const HashSet *B) {
-    if (!A || !B) return NULL;
+    LC_DEBUG_CHECK(A != NULL, "NULL set A");
+    LC_DEBUG_CHECK(B != NULL, "NULL set B");
 
     const HashSetImpl *ai = A->impl;
     const HashSetImpl *bi = B->impl;
@@ -1693,6 +1720,7 @@ static const void *hashset_next(Iterator *it) {
 }
 
 Iterator hashset_iter(const HashSet *set) {
+    LC_DEBUG_CHECK(set != NULL, "NULL set");
     return Iter((const Container *)set);
 }
 

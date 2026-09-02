@@ -800,6 +800,8 @@ Iterator linkedlist_iter_reversed(const LinkedList *list);
  *   • Cached hash invalidated on any mutation
  * ============================================================================ */
 
+#include <contain/linkedlist.h>
+
 /* -------------------------------------------------------------------------
  * Container vtable
  * ------------------------------------------------------------------------- */
@@ -830,7 +832,7 @@ struct LinkedListImpl {
     uint16_t item_offset;
     uint16_t item_size;
     uint32_t stride;
-    uint8_t owned;
+    uint8_t  owned;
 };
 
 /* Node structure */
@@ -862,9 +864,9 @@ static LinkedListEntry *linkedlist_entry_create(LinkedList *list, const void *it
     if (!entry) return NULL;
 
     LinkedListImpl *impl = (LinkedListImpl *)list->impl;
-    
+
     void *item_slot = lc_slot_at(entry->data, impl->item_offset);
-    
+
     if (lc_slot_init(item_slot, item, impl->item_size, impl->owned) != LC_OK) {
         allocator_free(list->alloc, entry);
         return NULL;
@@ -956,7 +958,7 @@ static LinkedList *linkedlist_create_impl(const LinkedListBuilder *cfg, const Li
         linkedlist_create_ctx_cleanup(&ctx);
         return NULL;
     }
-    
+
     LinkedListImpl *impl = (LinkedListImpl *)(ctx.list + 1);
     impl->item_size = (uint16_t)cfg->item_size;
     impl->item_offset = layout->item_offset;
@@ -990,7 +992,7 @@ static LinkedList *linkedlist_create_from_impl(const LinkedList *src, bool share
     }
 
     const LinkedListImpl *src_impl = src->impl;
-    
+
     if (share_alloc) {
         ctx.alloc = allocator_ref(src->alloc);
     } else {
@@ -1066,7 +1068,7 @@ LinkedListBuilder linkedlist_builder_ref(LinkedListBuilder b, uint8_t owned) {
 LinkedList *linkedlist_builder_build(LinkedListBuilder b) {
     LinkedListEntryLayout layout;
     if (!linkedlist_compute_layout(b.item_size, b.item_align, &layout)) return NULL;
-    
+
     return linkedlist_create_impl(&b, &layout);
 }
 
@@ -1126,16 +1128,17 @@ void linkedlist_destroy(LinkedList *list) {
 }
 
 int linkedlist_set_comparator(LinkedList *list, lc_Comparator cmp) {
-    if (!list || !cmp) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     if (list->container.len > 0) return LC_EBUSY;
     list->cmp = cmp;
     return LC_OK;
 }
 
 int linkedlist_set_allocator(LinkedList *list, Allocator *alloc) {
-    if (!list || !alloc) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    LC_DEBUG_CHECK(alloc != NULL, "NULL allocator");
     if (list->container.len > 0) return LC_EBUSY;
-    
+
     if (allocator_stride(alloc) < list->impl->stride) {
         return LC_ETYPE;
     }
@@ -1152,8 +1155,6 @@ int linkedlist_set_allocator(LinkedList *list, Allocator *alloc) {
 
 /* Insert at position */
 static int linkedlist_insert_impl(LinkedList *list, size_t pos, const void *item) {
-    if (!list) return LC_EINVAL;
-
     size_t old_len = list->container.len;
     if (pos > old_len) return LC_EBOUNDS;
 
@@ -1205,7 +1206,6 @@ static int linkedlist_insert_impl(LinkedList *list, size_t pos, const void *item
 
 /* Append range from src to dst at position */
 static int linkedlist_append_impl(LinkedList *dst, size_t pos, const LinkedList *src, size_t from, size_t to) {
-    if (!dst || !src) return LC_EINVAL;
     if (dst->impl->item_size != src->impl->item_size) return LC_ETYPE;
     if (pos > dst->container.len) return LC_EBOUNDS;
     if (from > to || to > src->container.len) return LC_EBOUNDS;
@@ -1267,37 +1267,44 @@ static int linkedlist_append_impl(LinkedList *dst, size_t pos, const LinkedList 
 }
 
 int linkedlist_push_back(LinkedList *list, const void *item) {
-    if (!list || !item) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return linkedlist_insert_impl(list, list->container.len, item);
 }
 
 int linkedlist_push_front(LinkedList *list, const void *item) {
-    if (!list || !item) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return linkedlist_insert_impl(list, 0, item);
 }
 
 int linkedlist_insert(LinkedList *list, size_t pos, const void *item) {
-    if (!list || !item) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return linkedlist_insert_impl(list, pos, item);
 }
 
 int linkedlist_insert_range(LinkedList *dst, size_t pos, const LinkedList *src, size_t from, size_t to) {
-    if (!dst || !src) return LC_EINVAL;
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst list");
+    LC_DEBUG_CHECK(src != NULL, "NULL src list");
     return linkedlist_append_impl(dst, pos, src, from, to);
 }
 
 int linkedlist_append(LinkedList *dst, const LinkedList *src) {
-    if (!dst || !src) return LC_EINVAL;
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst list");
+    LC_DEBUG_CHECK(src != NULL, "NULL src list");
     return linkedlist_append_impl(dst, dst->container.len, src, 0, src->container.len);
 }
 
 int linkedlist_append_range(LinkedList *dst, const LinkedList *src, size_t from, size_t to) {
-    if (!dst || !src) return LC_EINVAL;
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst list");
+    LC_DEBUG_CHECK(src != NULL, "NULL src list");
     return linkedlist_append_impl(dst, dst->container.len, src, from, to);
 }
 
 int linkedlist_set(LinkedList *list, size_t pos, const void *item) {
-    if (!list || !item) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     if (pos >= list->container.len) return LC_EBOUNDS;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
@@ -1315,7 +1322,7 @@ int linkedlist_set(LinkedList *list, size_t pos, const void *item) {
 
     void *item_slot = lc_slot_at(runner->data, list->impl->item_offset);
     int rc = lc_slot_set(item_slot, item, list->impl->item_size, list->impl->owned);
-    
+
     return rc;
 }
 
@@ -1332,7 +1339,6 @@ static void linkedlist_unlink_node(LinkedList *list, LinkedListEntry *node) {
 
 /* Remove range [from, to) */
 static int linkedlist_remove_impl(LinkedList *list, size_t from, size_t to) {
-    if (!list) return LC_EINVAL;
     if (from >= to || to > list->container.len) return LC_EBOUNDS;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
@@ -1350,7 +1356,7 @@ static int linkedlist_remove_impl(LinkedList *list, size_t from, size_t to) {
 }
 
 int linkedlist_pop_back(LinkedList *list) {
-    if (!list) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     if (!ends->tail) return LC_EBOUNDS;
@@ -1363,7 +1369,7 @@ int linkedlist_pop_back(LinkedList *list) {
 }
 
 int linkedlist_pop_front(LinkedList *list) {
-    if (!list) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     if (!ends->head) return LC_EBOUNDS;
@@ -1376,23 +1382,24 @@ int linkedlist_pop_front(LinkedList *list) {
 }
 
 int linkedlist_remove(LinkedList *list, size_t pos) {
-    if (!list) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     return linkedlist_remove_impl(list, pos, pos + 1);
 }
 
 int linkedlist_remove_range(LinkedList *list, size_t from, size_t to) {
-    if (!list) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     return linkedlist_remove_impl(list, from, to);
 }
 
 int linkedlist_clear(LinkedList *list) {
-    if (!list) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     if (list->container.len == 0) return LC_OK;
     return linkedlist_remove_impl(list, 0, list->container.len);
 }
 
 int linkedlist_reverse_inplace(LinkedList *list) {
-    if (!list || list->container.len < 2) return LC_OK;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    if (list->container.len < 2) return LC_OK;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     LinkedListEntry *curr = ends->head;
@@ -1462,7 +1469,8 @@ static void linkedlist_splice_chain(LinkedList *dst, size_t pos,
 }
 
 int linkedlist_splice(LinkedList *dst, size_t pos, LinkedList *src, size_t from, size_t to) {
-    if (!dst || !src) return LC_EINVAL;
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst list");
+    LC_DEBUG_CHECK(src != NULL, "NULL src list");
     if (dst == src) return LC_EINVAL;
     if (dst->impl->item_size != src->impl->item_size) return LC_ETYPE;
     if (pos > dst->container.len) return LC_EBOUNDS;
@@ -1482,17 +1490,18 @@ int linkedlist_splice(LinkedList *dst, size_t pos, LinkedList *src, size_t from,
 }
 
 int linkedlist_unique(LinkedList *list) {
-    if (!list || list->container.len < 2) return LC_OK;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    if (list->container.len < 2) return LC_OK;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     LinkedListImpl *impl = (LinkedListImpl *)list->impl;
-    
+
     const size_t item_sz = impl->item_size;
     const size_t item_off = impl->item_offset;
     const lc_Comparator cmp = list->cmp;
 
     LinkedListEntry *curr = ends->head;
-    
+
     while (curr && curr->next) {
         void *val_curr = lc_slot_get(lc_slot_at(curr->data, item_off), item_sz);
         void *val_next = lc_slot_get(lc_slot_at(curr->next->data, item_off), item_sz);
@@ -1543,14 +1552,14 @@ static void linkedlist_merge_chains(LinkedListEntry *a, LinkedListEntry *b,
 }
 
 int linkedlist_sort(LinkedList *list, lc_Comparator cmp) {
-    if (!list) return LC_EINVAL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     if (list->container.len < 2) return LC_OK;
 
     if (!cmp) return LC_EINVAL;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     LinkedListImpl *impl = (LinkedListImpl *)list->impl;
-    
+
     size_t item_off = impl->item_offset;
     size_t len = list->container.len;
 
@@ -1565,11 +1574,11 @@ int linkedlist_sort(LinkedList *list, lc_Comparator cmp) {
 
         while (curr) {
             left = curr;
-            
+
             /* Find end of left side */
             LinkedListEntry *temp = left;
             for (size_t i = 1; i < step && temp->next; i++) temp = temp->next;
-            
+
             right = temp->next;
             if (right) right->prev = NULL;
             temp->next = NULL;
@@ -1577,7 +1586,7 @@ int linkedlist_sort(LinkedList *list, lc_Comparator cmp) {
             /* Find end of right side */
             temp = right;
             for (size_t i = 1; i < step && temp && temp->next; i++) temp = temp->next;
-            
+
             next_pair = temp ? temp->next : NULL;
             if (temp) temp->next = NULL;
             if (next_pair) next_pair->prev = NULL;
@@ -1592,7 +1601,7 @@ int linkedlist_sort(LinkedList *list, lc_Comparator cmp) {
                 tail_prev->next = merged_h;
                 merged_h->prev = tail_prev;
             }
-            
+
             tail_prev = merged_t;
             curr = next_pair;
         }
@@ -1600,7 +1609,7 @@ int linkedlist_sort(LinkedList *list, lc_Comparator cmp) {
 
     ends->head = head;
     ends->tail = tail_prev;
-    
+
     return LC_OK;
 }
 
@@ -1621,7 +1630,7 @@ static void *linkedlist_at_impl(const LinkedList *list, size_t pos) {
         entry = ends->tail;
         for (size_t i = len - 1; i > pos; i--) entry = entry->prev;
     }
-    
+
     return lc_slot_at(entry->data, list->impl->item_offset);
 }
 
@@ -1638,49 +1647,51 @@ static void *linkedlist_back_impl(const LinkedList *list) {
 }
 
 const void *linkedlist_at(const LinkedList *list, size_t pos) {
-    if (!list) return NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     void *slot = linkedlist_at_impl(list, pos);
     return slot ? lc_slot_get(slot, list->impl->item_size) : NULL;
 }
 
 const void *linkedlist_front(const LinkedList *list) {
-    if (!list) return NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     void *slot = linkedlist_front_impl(list);
     return slot ? lc_slot_get(slot, list->impl->item_size) : NULL;
 }
 
 const void *linkedlist_back(const LinkedList *list) {
-    if (!list) return NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     void *slot = linkedlist_back_impl(list);
     return slot ? lc_slot_get(slot, list->impl->item_size) : NULL;
 }
 
 void *linkedlist_at_mut(const LinkedList *list, size_t pos) {
-    if (!list) return NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     return linkedlist_at_impl(list, pos);
 }
 
 void *linkedlist_front_mut(const LinkedList *list) {
-    if (!list) return NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     return linkedlist_front_impl(list);
 }
 
 void *linkedlist_back_mut(const LinkedList *list) {
-    if (!list) return NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     return linkedlist_back_impl(list);
 }
 
 size_t linkedlist_find(const LinkedList *list, const void *item) {
-    if (!list || !item) return LIST_NPOS;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
+    if (list->container.len == 0) return LIST_NPOS;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     if (!ends->head) return LIST_NPOS;
-    
+
     const LinkedListImpl *impl = list->impl;
     const size_t item_off = impl->item_offset;
     const size_t item_sz = impl->item_size;
     const lc_Comparator cmp = list->cmp;
-    
+
     LinkedListEntry *runner = ends->head;
     size_t pos = 0;
     while (runner) {
@@ -1696,16 +1707,18 @@ size_t linkedlist_find(const LinkedList *list, const void *item) {
 }
 
 size_t linkedlist_rfind(const LinkedList *list, const void *item) {
-    if (!list || !item) return LIST_NPOS;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
+    if (list->container.len == 0) return LIST_NPOS;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     if (!ends->tail) return LIST_NPOS;
-    
+
     const LinkedListImpl *impl = list->impl;
     const size_t item_off = impl->item_offset;
     const size_t item_sz = impl->item_size;
     const lc_Comparator cmp = list->cmp;
-    
+
     LinkedListEntry *runner = ends->tail;
     size_t pos = list->container.len - 1;
     while (runner) {
@@ -1725,11 +1738,13 @@ bool linkedlist_contains(const LinkedList *list, const void *item) {
 }
 
 bool linkedlist_is_empty(const LinkedList *list) {
-    return !list || list->container.len == 0;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    return list->container.len == 0;
 }
 
 size_t linkedlist_len(const LinkedList *list) {
-    return list ? list->container.len : 0;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    return list->container.len;
 }
 
 size_t linkedlist_size(const LinkedList *list) {
@@ -1737,7 +1752,8 @@ size_t linkedlist_size(const LinkedList *list) {
 }
 
 size_t linkedlist_hash(const LinkedList *list) {
-    if (!list || list->container.len == 0) return 0;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    if (list->container.len == 0) return 0;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     const size_t item_off = list->impl->item_offset;
@@ -1749,13 +1765,15 @@ size_t linkedlist_hash(const LinkedList *list) {
         size_t x = lc_slot_hash(item, item_sz, NULL);
         h ^= x + 0x9e3779b9 + (h << 6) + (h >> 2);
     }
-    
+
     return lc_hash_mix(h);
 }
 
 bool linkedlist_equals(const LinkedList *A, const LinkedList *B) {
-    if (!A || !B) return false;
+    LC_DEBUG_CHECK(A != NULL, "NULL list A");
+    LC_DEBUG_CHECK(B != NULL, "NULL list B");
     if (A == B) return true;
+    
     if (A->container.len != B->container.len) return false;
 
     if (A->impl->item_size != B->impl->item_size) return false;
@@ -1766,7 +1784,7 @@ bool linkedlist_equals(const LinkedList *A, const LinkedList *B) {
     LinkedListEnds *ends_a = (LinkedListEnds *)A->container.items;
     LinkedListEnds *ends_b = (LinkedListEnds *)B->container.items;
     LinkedListEntry *ra = ends_a->head, *rb = ends_b->head;
-    
+
     while (ra && rb) {
         void *a_item = lc_slot_get(lc_slot_at(ra->data, item_off), item_sz);
         void *b_item = lc_slot_get(lc_slot_at(rb->data, item_off), item_sz);
@@ -1779,18 +1797,19 @@ bool linkedlist_equals(const LinkedList *A, const LinkedList *B) {
 }
 
 Allocator *linkedlist_allocator(const LinkedList *list) {
-    return list ? list->alloc : NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
+    return list->alloc;
 }
 
 /* -------------------------------------------------------------------------
  * Copy & view operations
  * ------------------------------------------------------------------------- */
 LinkedList *linkedlist_clone(const LinkedList *list) {
-    if (!list) return NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
 
     LinkedList *clone = linkedlist_create_from_impl(list, false);
     if (!clone) return NULL;
-    
+
     const size_t item_sz = list->impl->item_size;
     const size_t item_off = list->impl->item_offset;
 
@@ -1809,12 +1828,12 @@ LinkedList *linkedlist_clone(const LinkedList *list) {
 }
 
 LinkedList *linkedlist_instance(const LinkedList *list) {
-    if (!list) return NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     return linkedlist_create_from_impl(list, false);
 }
 
 LinkedList *linkedlist_reverse(const LinkedList *list) {
-    if (!list) return NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
 
     LinkedList *rev = linkedlist_create_from_impl(list, false);
     if (!rev) return NULL;
@@ -1837,9 +1856,9 @@ LinkedList *linkedlist_reverse(const LinkedList *list) {
 }
 
 LinkedList *linkedlist_sublist(const LinkedList *list, size_t from, size_t to) {
-    if (!list) return NULL;
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     if (from > to || to > list->container.len) return NULL;
-    
+
     LinkedList *slice = linkedlist_create_from_impl(list, false);
     if (!slice) return NULL;
 
@@ -1879,7 +1898,7 @@ static Array *linkedlist_collect_fixed(const LinkedList *list) {
 
     if (header_size > SIZE_MAX - align) return NULL;
     size_t items_offset = (header_size + align - 1) & ~(align - 1);
-    
+
     size_t total_items = list_len * item_size;
     if (items_offset > SIZE_MAX - total_items) return NULL;
     size_t total = items_offset + total_items;
@@ -1911,17 +1930,17 @@ static Array *linkedlist_collect_strings(const LinkedList *list) {
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     const size_t item_off = list->impl->item_offset;
-    
+
     size_t total_chars = 0;
     for (LinkedListEntry *entry = ends->head; entry; entry = entry->next) {
         void *item = lc_slot_at(entry->data, item_off);
         const char *str = *(const char **)item;
         total_chars += strlen(str) + 1;
     }
-   
+
     size_t ptrs_bytes = list_len * sizeof(char *);
     if (total_chars > SIZE_MAX - sizeof(Array) - ptrs_bytes) return NULL;
-    
+
     Array *arr = (Array *)malloc(sizeof(Array) + ptrs_bytes + total_chars);
     if (!arr) return NULL;
 
@@ -1931,7 +1950,7 @@ static Array *linkedlist_collect_strings(const LinkedList *list) {
 
     char **table = (char **)arr->items;
     char *pool = (char *)(arr->items + ptrs_bytes);
-    
+
     size_t pos = 0;
     for (LinkedListEntry *entry = ends->head; entry; entry = entry->next) {
         void *item = lc_slot_at(entry->data, item_off);
@@ -1946,8 +1965,7 @@ static Array *linkedlist_collect_strings(const LinkedList *list) {
 }
 
 Array *linkedlist_to_array(const LinkedList *list) {
-    if (!list) return NULL;
-
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     if (list->impl->item_size == 0) {
         return linkedlist_collect_strings(list);
     }
@@ -1986,10 +2004,12 @@ static const void *linkedlist_next(Iterator *iter) {
 }
 
 Iterator linkedlist_iter(const LinkedList *list) {
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     return Iter((const Container *)list);
 }
 
 Iterator linkedlist_iter_reversed(const LinkedList *list) {
+    LC_DEBUG_CHECK(list != NULL, "NULL list");
     return IterReverse((const Container *)list);
 }
 

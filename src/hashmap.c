@@ -604,27 +604,27 @@ static void *hashmap_get_impl(const HashMap *map, const void *key, size_t bucket
 
 const void *hashmap_get(const HashMap *map, const void *key) {
     LC_DEBUG_CHECK(map != NULL, "NULL map");
-    if (!key) return NULL;
+    LC_DEBUG_CHECK(key != NULL, "NULL key");
     void *val_slot = hashmap_get_impl(map, key, hashmap_bucket(map, key));
     return  val_slot ? lc_slot_get(val_slot, map->impl->val_size) : NULL;
 }
 
 const void *hashmap_get_or_default(const HashMap *map, const void *key, const void *dval) {
     LC_DEBUG_CHECK(map != NULL, "NULL map");
-    if (!key) return dval;
+    LC_DEBUG_CHECK(key != NULL, "NULL key");
     void *val_slot = hashmap_get_impl(map, key, hashmap_bucket(map, key));
     return val_slot ? lc_slot_get(val_slot, map->impl->val_size) : dval;
 }
 
 void *hashmap_get_mut(const HashMap *map, const void *key) {
     LC_DEBUG_CHECK(map != NULL, "NULL map");
-    if (!key) return NULL;
+    LC_DEBUG_CHECK(key != NULL, "NULL key");
     return hashmap_get_impl(map, key, hashmap_bucket(map, key));
 }
 
 void *hashmap_get_mut_or_default(const HashMap *map, const void *key, const void *dval) {
     LC_DEBUG_CHECK(map != NULL, "NULL map");
-    if (!key) return (void *)dval;
+    LC_DEBUG_CHECK(key != NULL, "NULL key");
     void *val_slot = hashmap_get_impl(map, key, hashmap_bucket(map, key));
     return val_slot ? val_slot : (void *)dval;
 }
@@ -670,7 +670,8 @@ static int hashmap_insert_impl(HashMap *map, const void *key, const void *val, s
 
 int hashmap_insert(HashMap *map, const void *key, const void *val) {
     LC_DEBUG_CHECK(map != NULL, "NULL map");
-    if (!key || !val) return LC_EINVAL;
+    LC_DEBUG_CHECK(key != NULL, "NULL key");
+    LC_DEBUG_CHECK(val != NULL, "NULL val");
     int rc = hashmap_insert_impl(map, key, val, hashmap_bucket(map, key));
     if (rc != LC_OK) return rc;
     return hashmap_adjust_capacity(map, false);
@@ -716,7 +717,7 @@ static int hashmap_remove_impl(HashMap *map, const void *key, const void *val, s
 
 int hashmap_remove(HashMap *map, const void *key) {
     LC_DEBUG_CHECK(map != NULL, "NULL map");
-    if (!key) return LC_EINVAL;
+    LC_DEBUG_CHECK(key != NULL, "NULL key");
     int rc = hashmap_remove_impl(map, key, NULL, hashmap_bucket(map, key));
     if (rc != LC_OK) return rc;
     return hashmap_adjust_capacity(map, true);
@@ -724,7 +725,8 @@ int hashmap_remove(HashMap *map, const void *key) {
 
 int hashmap_remove_entry(HashMap *map, const void *key, const void *val) {
     LC_DEBUG_CHECK(map != NULL, "NULL map");
-    if (!key || !val) return LC_EINVAL;
+    LC_DEBUG_CHECK(key != NULL, "NULL key");
+    LC_DEBUG_CHECK(val != NULL, "NULL val");
     int rc = hashmap_remove_impl(map, key, val, hashmap_bucket(map, key));
     if (rc != LC_OK) return rc;
     return hashmap_adjust_capacity(map, true);
@@ -759,13 +761,14 @@ static bool hashmap_contains_impl(const HashMap *map, const void *key, const voi
 
 bool hashmap_contains(const HashMap *map, const void *key) {
     LC_DEBUG_CHECK(map != NULL, "NULL map");
-    if (!key) return false;
+    LC_DEBUG_CHECK(key != NULL, "NULL key");
     return hashmap_contains_impl(map, key, NULL, hashmap_bucket(map, key));
 }
 
 bool hashmap_contains_entry(const HashMap *map, const void *key, const void *val) {
     LC_DEBUG_CHECK(map != NULL, "NULL map");
-    if (!key || !val) return false;
+    LC_DEBUG_CHECK(key != NULL, "NULL key");
+    LC_DEBUG_CHECK(val != NULL, "NULL val");
     return hashmap_contains_impl(map, key, val, hashmap_bucket(map, key));
 }
 
@@ -835,8 +838,8 @@ static int hashmap_merge_impl(HashMap *dst, const HashMap *src) {
 }
 
 int hashmap_merge(HashMap *dst, const HashMap *src) {
-    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
-    LC_DEBUG_CHECK(src != NULL, "NULL source");
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst map");
+    LC_DEBUG_CHECK(src != NULL, "NULL src map");
     if (dst == src) return LC_OK;
 
     if (dst->kcmp != src->kcmp) return LC_ETYPE;

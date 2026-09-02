@@ -479,43 +479,43 @@ static int linkedlist_append_impl(LinkedList *dst, size_t pos, const LinkedList 
 
 int linkedlist_push_back(LinkedList *list, const void *item) {
     LC_DEBUG_CHECK(list != NULL, "NULL list");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return linkedlist_insert_impl(list, list->container.len, item);
 }
 
 int linkedlist_push_front(LinkedList *list, const void *item) {
     LC_DEBUG_CHECK(list != NULL, "NULL list");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return linkedlist_insert_impl(list, 0, item);
 }
 
 int linkedlist_insert(LinkedList *list, size_t pos, const void *item) {
     LC_DEBUG_CHECK(list != NULL, "NULL list");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return linkedlist_insert_impl(list, pos, item);
 }
 
 int linkedlist_insert_range(LinkedList *dst, size_t pos, const LinkedList *src, size_t from, size_t to) {
-    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
-    LC_DEBUG_CHECK(src != NULL, "NULL source");
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst list");
+    LC_DEBUG_CHECK(src != NULL, "NULL src list");
     return linkedlist_append_impl(dst, pos, src, from, to);
 }
 
 int linkedlist_append(LinkedList *dst, const LinkedList *src) {
-    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
-    LC_DEBUG_CHECK(src != NULL, "NULL source");
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst list");
+    LC_DEBUG_CHECK(src != NULL, "NULL src list");
     return linkedlist_append_impl(dst, dst->container.len, src, 0, src->container.len);
 }
 
 int linkedlist_append_range(LinkedList *dst, const LinkedList *src, size_t from, size_t to) {
-    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
-    LC_DEBUG_CHECK(src != NULL, "NULL source");
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst list");
+    LC_DEBUG_CHECK(src != NULL, "NULL src list");
     return linkedlist_append_impl(dst, dst->container.len, src, from, to);
 }
 
 int linkedlist_set(LinkedList *list, size_t pos, const void *item) {
     LC_DEBUG_CHECK(list != NULL, "NULL list");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     if (pos >= list->container.len) return LC_EBOUNDS;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
@@ -680,8 +680,8 @@ static void linkedlist_splice_chain(LinkedList *dst, size_t pos,
 }
 
 int linkedlist_splice(LinkedList *dst, size_t pos, LinkedList *src, size_t from, size_t to) {
-    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
-    LC_DEBUG_CHECK(src != NULL, "NULL source");
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst list");
+    LC_DEBUG_CHECK(src != NULL, "NULL src list");
     if (dst == src) return LC_EINVAL;
     if (dst->impl->item_size != src->impl->item_size) return LC_ETYPE;
     if (pos > dst->container.len) return LC_EBOUNDS;
@@ -892,7 +892,8 @@ void *linkedlist_back_mut(const LinkedList *list) {
 
 size_t linkedlist_find(const LinkedList *list, const void *item) {
     LC_DEBUG_CHECK(list != NULL, "NULL list");
-    if (!item) return LIST_NPOS;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
+    if (list->container.len == 0) return LIST_NPOS;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     if (!ends->head) return LIST_NPOS;
@@ -918,7 +919,8 @@ size_t linkedlist_find(const LinkedList *list, const void *item) {
 
 size_t linkedlist_rfind(const LinkedList *list, const void *item) {
     LC_DEBUG_CHECK(list != NULL, "NULL list");
-    if (!item) return LIST_NPOS;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
+    if (list->container.len == 0) return LIST_NPOS;
 
     LinkedListEnds *ends = (LinkedListEnds *)list->container.items;
     if (!ends->tail) return LIST_NPOS;
@@ -982,7 +984,7 @@ bool linkedlist_equals(const LinkedList *A, const LinkedList *B) {
     LC_DEBUG_CHECK(A != NULL, "NULL list A");
     LC_DEBUG_CHECK(B != NULL, "NULL list B");
     if (A == B) return true;
-
+    
     if (A->container.len != B->container.len) return false;
 
     if (A->impl->item_size != B->impl->item_size) return false;

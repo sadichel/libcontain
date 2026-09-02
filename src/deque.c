@@ -588,19 +588,19 @@ static int deque_insert_impl(Deque *deq, size_t pos, const void *item) {
 
 int deque_push_back(Deque *deq, const void *item) {
     LC_DEBUG_CHECK(deq != NULL, "NULL deque");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return deque_insert_impl(deq, deq->container.len, item);
 }
 
 int deque_push_front(Deque *deq, const void *item) {
     LC_DEBUG_CHECK(deq != NULL, "NULL deque");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return deque_insert_impl(deq, 0, item);
 }
 
 int deque_insert(Deque *deq, size_t pos, const void *item) {
     LC_DEBUG_CHECK(deq != NULL, "NULL deque");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     return deque_insert_impl(deq, pos, item);
 }
 
@@ -624,7 +624,7 @@ int deque_append_range(Deque *dst, const Deque *src, size_t from, size_t to) {
 
 int deque_set(Deque *deq, size_t pos, const void *item) {
     LC_DEBUG_CHECK(deq != NULL, "NULL deque");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
     if (pos >= deq->container.len) return LC_EBOUNDS;
 
     void *slot = deque_slot_at(deq, pos);
@@ -1034,7 +1034,8 @@ void *deque_as_slice(Deque *deq) {
 
 size_t deque_find(const Deque *deq, const void *item) {
     LC_DEBUG_CHECK(deq != NULL, "NULL deque");
-    if (!item || deq->container.len == 0) return DEQ_NPOS;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
+    if (deq->container.len == 0) return DEQ_NPOS;
 
     const DequeImpl *impl = deq->impl;
     const size_t len = deq->container.len;
@@ -1059,7 +1060,8 @@ size_t deque_find(const Deque *deq, const void *item) {
 
 size_t deque_rfind(const Deque *deq, const void *item) {
     LC_DEBUG_CHECK(deq != NULL, "NULL deque");
-    if (!item || deq->container.len == 0) return DEQ_NPOS;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
+    if (deq->container.len == 0) return DEQ_NPOS;
 
     const DequeImpl *impl = deq->impl;
     const size_t len = deq->container.len;
@@ -1085,7 +1087,8 @@ size_t deque_rfind(const Deque *deq, const void *item) {
 
 bool deque_contains(const Deque *deq, const void *item) {
     LC_DEBUG_CHECK(deq != NULL, "NULL deque");
-    if (!item || deq->container.len == 0) return false;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
+    if (deq->container.len == 0) return false;
     return deque_find(deq, item) != DEQ_NPOS;
 }
 

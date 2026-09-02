@@ -27,6 +27,7 @@
 - Typed wrapper macros now use builders internally for consistent construction
 - Documentation expanded with reference string usage examples
 - Typed wrapper iteration now returns type-safe iterators
+**Performance**: Removed runtime null checks in release builds
 
 ---
 

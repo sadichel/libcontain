@@ -497,7 +497,7 @@ static int vector_insert_impl(Vector *vec, size_t pos, const void *item) {
 
 int vector_push(Vector *vec, const void *item) {
     LC_DEBUG_CHECK(vec != NULL, "NULL vector");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");;
     
     VectorImpl *impl = (VectorImpl *)vec->impl;
     size_t len = vec->container.len;
@@ -528,31 +528,31 @@ int vector_push(Vector *vec, const void *item) {
 
 int vector_insert(Vector *vec, size_t pos, const void *item) {
     LC_DEBUG_CHECK(vec != NULL, "NULL vector");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");;
     return vector_insert_impl(vec, pos, item);
 }
 
 int vector_insert_range(Vector *dst, size_t pos, const Vector *src, size_t from, size_t to) {
-    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
-    LC_DEBUG_CHECK(src != NULL, "NULL source");
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst vector");
+    LC_DEBUG_CHECK(src != NULL, "NULL src vector");
     return vector_append_impl(dst, pos, src, from, to);
 }
 
 int vector_append(Vector *dst, const Vector *src) {
-    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
-    LC_DEBUG_CHECK(src != NULL, "NULL source");
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst vector");
+    LC_DEBUG_CHECK(src != NULL, "NULL src vector");
     return vector_append_impl(dst, dst->container.len, src, 0, src->container.len);
 }
 
 int vector_append_range(Vector *dst, const Vector *src, size_t from, size_t to) {
-    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
-    LC_DEBUG_CHECK(src != NULL, "NULL source");
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst vector");
+    LC_DEBUG_CHECK(src != NULL, "NULL src vector");
     return vector_append_impl(dst, dst->container.len, src, from, to);
 }
 
 int vector_set(Vector *vec, size_t pos, const void *item) {
     LC_DEBUG_CHECK(vec != NULL, "NULL vector");
-    if (!item) return LC_EINVAL;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");;
     if (pos >= vec->container.len) return LC_EBOUNDS;
 
     void *slot = vector_slot_at(vec, pos);
@@ -727,7 +727,7 @@ int vector_reverse_inplace(Vector *vec) {
 }
 
 int vector_splice(Vector *dst, size_t pos, size_t remove_count, const Vector *src, size_t src_from, size_t src_to) {
-    LC_DEBUG_CHECK(dst != NULL, "NULL destination");
+    LC_DEBUG_CHECK(dst != NULL, "NULL dst vector");
     if (pos > dst->container.len) return LC_EBOUNDS;
     if (remove_count > dst->container.len - pos) return LC_EBOUNDS;
 
@@ -937,7 +937,8 @@ void *vector_as_slice(Vector *vec) {
 
 size_t vector_find(const Vector *vec, const void *item) {
     LC_DEBUG_CHECK(vec != NULL, "NULL vector");
-    if (!item || vec->container.len == 0) return VEC_NPOS;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
+    if (vec->container.len == 0) return VEC_NPOS;
 
     const VectorImpl *impl = vec->impl;
     const size_t len = vec->container.len;
@@ -969,7 +970,8 @@ size_t vector_find(const Vector *vec, const void *item) {
 
 size_t vector_rfind(const Vector *vec, const void *item) {
     LC_DEBUG_CHECK(vec != NULL, "NULL vector");
-    if (!item || vec->container.len == 0) return VEC_NPOS;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
+    if (vec->container.len == 0) return VEC_NPOS;
 
     const VectorImpl *impl = vec->impl;
     const size_t len = vec->container.len;
@@ -1002,7 +1004,8 @@ size_t vector_rfind(const Vector *vec, const void *item) {
 
 bool vector_contains(const Vector *vec, const void *item) {
     LC_DEBUG_CHECK(vec != NULL, "NULL vector");
-    if (!item || vec->container.len == 0) return false;
+    LC_DEBUG_CHECK(item != NULL, "NULL item");
+    if (vec->container.len == 0) return false;
     return vector_find(vec, item) != VEC_NPOS;
 }
 
@@ -1131,7 +1134,7 @@ Vector *vector_reverse(const Vector *vec) {
 }
 
 Vector *vector_clone(const Vector *src) {
-    LC_DEBUG_CHECK(src != NULL, "NULL source");
+    LC_DEBUG_CHECK(src != NULL, "NULL src vector");
 
     Vector *clone = vector_create_from_impl(src, src->container.capacity);
     if (!clone) return NULL;
